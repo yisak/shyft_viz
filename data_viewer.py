@@ -305,8 +305,8 @@ class TsPlot(object):
         self.plotted_unit = []
         self.axes = []
         self.lines = []
-        self.fig.autofmt_xdate()
-        self.cursor = Cursor(self.ax, useblit=True, color='red', linewidth=2)
+        #self.fig.autofmt_xdate()
+        #self.cursor = Cursor(self.ax, useblit=True, color='red', linewidth=2)
 
 
     def init_plot(self, t, v, labels, units):
@@ -419,7 +419,7 @@ class TsPlot(object):
     #            if(len(ax)>0): ax[0].legend_ = None
     # self.fig.canvas.draw()
 
-    # def subplot_autofmt_xdate(self, ax):
-    #     plt.setp(ax.xaxis.get_majorticklabels(), rotation=70)
+    def subplot_autofmt_xdate(self, ax):
+        plt.setp(ax.xaxis.get_majorticklabels(), rotation=70)
 
 

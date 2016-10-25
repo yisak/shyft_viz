@@ -1,5 +1,5 @@
 import numpy as np
-from viewer_prep import CellViewerPrep, SubcatViewerPrep
+from .viewer_prep import CellViewerPrep, SubcatViewerPrep
 from shyft import api
 
 

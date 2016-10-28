@@ -11,7 +11,7 @@ from itertools import cycle
 
 
 class Viewer(object):
-    def __init__(self, data_ext):
+    def __init__(self, data_ext, time_marker=None):
 
         self.data_ext = data_ext
         self.map_fetching_lst = self.data_ext.map_fetching_lst
@@ -22,8 +22,8 @@ class Viewer(object):
         self.nb_catch = len(self.polys)
         self.catch_nms = self.data_ext.catch_names
         self.var_units = self.data_ext.var_units
-        self.t_ax = self.data_ext.rm.time_axis
-        self.max_ti = self.data_ext.rm.time_axis.n-1
+        self.t_ax = self.data_ext.t_ax # self.data_ext.rm.time_axis
+        self.max_ti = self.data_ext.t_ax.n-1 # self.data_ext.rm.time_axis.n-1
         self.times = [datetime.utcfromtimestamp(self.t_ax.time(i)) for i in range(self.t_ax.size())]
 
         self.geo_data = ['z']
@@ -34,9 +34,11 @@ class Viewer(object):
         self.ti = 0
         self.data = None
 
-        self.tsplot = TsPlot()
+
+        self.tsplot = TsPlot(datetime.utcfromtimestamp(time_marker) if time_marker is not None else time_marker)
 
         self.plt_mode = {'Plot_Source': False, 'Multi_Series': False, 'Re-plot': False}
+        self.custom_plt = True
 
         self.alreadyplottedCatchIndx = np.zeros((self.nb_catch), dtype=np.int)
         self.alreadyplottedDistVar = []
@@ -49,7 +51,7 @@ class Viewer(object):
 
         gs_var_select = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=gs[0, 0])
         gs_plot = gridspec.GridSpecFromSubplotSpec(3, 1, subplot_spec=gs[0, 1], height_ratios=[0.1,0.8,0.1])
-        gs_options = gridspec.GridSpecFromSubplotSpec(3, 1, subplot_spec=gs[0, 2])
+        gs_options = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=gs[0, 2])
         gs_lim_slider = gridspec.GridSpecFromSubplotSpec(2, 2, subplot_spec=gs_plot[2, 0], width_ratios=[0.7,0.3])
         gs_navigate = gridspec.GridSpecFromSubplotSpec(1, 6, subplot_spec=gs_plot[0, 0], width_ratios=[0.1,0.1,0.1,0.1,0.1,0.5])
 
@@ -57,7 +59,9 @@ class Viewer(object):
         ax_map_var_slect = self.fig.add_subplot(gs_var_select[0, 0])
         #ax_geo_data_slect = self.fig.add_subplot(gs_var_select[1, 0])
         ax_pt_var_slect = self.fig.add_subplot(gs_var_select[1, 0])
-        ax_options_1 = self.fig.add_subplot(gs[0,2])
+        #ax_options_1 = self.fig.add_subplot(gs[0,2])
+        ax_options_1 = self.fig.add_subplot(gs_options[0,0])
+        ax_oper_plots = self.fig.add_subplot(gs_options[1, 0])
         ax_min_slider = self.fig.add_subplot(gs_lim_slider[0, 0])
         ax_max_slider = self.fig.add_subplot(gs_lim_slider[1, 0])
         ax_reset_button = self.fig.add_subplot(gs_lim_slider[:, 1])
@@ -69,6 +73,7 @@ class Viewer(object):
         #                                              self.OnGeoDataBtnClk)
         self.add_radio_button(ax_pt_var_slect, 'Pt_Source', ['Prec', 'Temp'], None)
         self.add_check_button(ax_options_1, 'Options', list(self.plt_mode.keys()), list(self.plt_mode.values()), self.OnPltModeBtnClk)
+        self.add_check_button(ax_oper_plots, 'Custom Plots', ['PTQ'], [True], self.OnCustomPltBtnClk)
         self.add_data_lim_sliders(ax_min_slider, ax_max_slider)
         self.add_time_slider(ax_time_slider)
         self.add_media_button(ax_navigate)
@@ -122,6 +127,9 @@ class Viewer(object):
         #self.map.update_scalarmappable()
 
         self.fig.canvas.draw()
+
+    def OnCustomPltBtnClk(self, label):
+        pass
 
     def OnPltModeBtnClk(self, label):
         self.plt_mode[label] = not self.plt_mode[label]
@@ -268,10 +276,17 @@ class Viewer(object):
                 self.alreadyplottedCatchIndx[:] = 0
                 self.alreadyplottedDistVar = []
                 #var_indx = np.nonzero(self.var_select)
-                ts_v = self.data_ext.get_ts(self.dist_var, self.ts_fetching_lst[catchind])
-                self.tsplot.init_plot(self.times, [ts_v],
-                                      [self.dist_var + '_' + self.catch_nms[catchind]],
-                                      [self.var_units[self.dist_var]])
+                if self.custom_plt:
+                    dist_vars = ['temp', 'q_avg', 'prec']
+                else:
+                    dist_vars = [self.dist_var]
+
+
+                #ts_v = self.data_ext.get_ts(self.dist_var, self.ts_fetching_lst[catchind])
+                self.tsplot.init_plot(self.times,
+                                      [self.data_ext.get_ts(dist_var, self.ts_fetching_lst[catchind]) for dist_var in dist_vars],
+                                      [dist_var + '_' + self.catch_nms[catchind] for dist_var in dist_vars],
+                                      [self.var_units[dist_var] for dist_var in dist_vars])
             else:
                 if self.alreadyplottedCatchIndx[catchind] and self.dist_var in self.alreadyplottedDistVar and not self.plt_mode['Re-plot']: return True
                 if not self.plt_mode['Multi_Series']:
@@ -289,13 +304,14 @@ class Viewer(object):
 
 
 class TsPlot(object):
-    def __init__(self):  # ,timesteps,values):
+    def __init__(self, time_marker):  # ,timesteps,values):
+        self.time_marker = time_marker
         self.fig = None
         self.ax = None
         self.plotted_unit = None
         self.axes = None
         self.reset_plot()
-        self.colors = ('Green', 'Red', 'Blue', 'Cyan') # colors = cycle(matplotlib.rcParams['axes.color_cycle'])
+        self.colors = ('Green', 'Red', 'Blue', 'Cyan') # colors = cycle(matplotlib.rcParams['axes.color_cycle']) # plt.rcParams['axes.color_cycle']
         self.line_styles = [cycle(['-', '--', '-.', ':', '.', ',', 'o', 'v', '^', '<', '>',
                                   '1', '2', '3', '4', 's', 'p', '*', 'h', 'H', '+', 'x', 'D', 'd', '|', '_']) for _ in range(4)]
         self.temp = [0.85, 0.75, 0.6]
@@ -329,6 +345,7 @@ class TsPlot(object):
                 if (len(self.plotted_unit) == 0):
                     self.axes.append(self.ax)
                     self.lines.append(self.axes[0].plot(t, v[k], ls=next(self.line_styles[0]), color=self.colors[0], label=labels[k])[0])
+
                     self.plotted_unit.append(units[k])
                     self.axes[0].set_ylabel(units[k],color=self.colors[0])
                     self.axes[0].tick_params(axis='y', colors=self.colors[0])
@@ -349,6 +366,8 @@ class TsPlot(object):
                         self.axes[-1].set_ylabel(units[k])
                         self.axes[-1].format_coord = self.make_format(self.axes[-1], self.axes[0])
                         self.axes[-1].tick_params(axis='y', colors=color)
+                if self.time_marker is not None:
+                    self.axes[0].axvline(x=self.time_marker)
                     if len(self.axes)>2:
                         # Make some space on the right side for the extra y-axis.
                         #self.fig.subplots_adjust(right=0.75)

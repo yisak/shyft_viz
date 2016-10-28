@@ -1,6 +1,8 @@
-import numpy as np
-from .viewer_prep import CellViewerPrep, SubcatViewerPrep
 from shyft import api
+
+import numpy as np
+
+from ..geom_preps.shyft_cell_geom import CellViewerPrep, SubcatViewerPrep
 
 
 class ArealDataExtractor(object):

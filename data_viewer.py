@@ -34,6 +34,8 @@ class Viewer(object):
         self.ti = 0
         self.data = None
 
+        self.dataset_names = list(data_ext.keys())
+        self.dataset_active = self.dataset_names[0]
 
         self.tsplot = TsPlot(datetime.utcfromtimestamp(time_marker) if time_marker is not None else time_marker)
 
@@ -49,16 +51,17 @@ class Viewer(object):
         self.fig = plt.figure(1, (15, 6))#, facecolor='white')
         gs = gridspec.GridSpec(1, 3, width_ratios=[0.1,0.7,0.2]) #, height_ratios=[2,1])
 
-        gs_var_select = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=gs[0, 0])
+        gs_var_select = gridspec.GridSpecFromSubplotSpec(3, 1, subplot_spec=gs[0, 0])
         gs_plot = gridspec.GridSpecFromSubplotSpec(3, 1, subplot_spec=gs[0, 1], height_ratios=[0.1,0.8,0.1])
         gs_options = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=gs[0, 2])
         gs_lim_slider = gridspec.GridSpecFromSubplotSpec(2, 2, subplot_spec=gs_plot[2, 0], width_ratios=[0.7,0.3])
         gs_navigate = gridspec.GridSpecFromSubplotSpec(1, 6, subplot_spec=gs_plot[0, 0], width_ratios=[0.1,0.1,0.1,0.1,0.1,0.5])
 
         self.ax_plt = self.fig.add_subplot(gs_plot[1, 0])
-        ax_map_var_slect = self.fig.add_subplot(gs_var_select[0, 0])
+        ax_dataset_slect = self.fig.add_subplot(gs_var_select[0, 0])
+        ax_map_var_slect = self.fig.add_subplot(gs_var_select[1, 0])
         #ax_geo_data_slect = self.fig.add_subplot(gs_var_select[1, 0])
-        ax_pt_var_slect = self.fig.add_subplot(gs_var_select[1, 0])
+        ax_pt_var_slect = self.fig.add_subplot(gs_var_select[2, 0])
         #ax_options_1 = self.fig.add_subplot(gs[0,2])
         ax_options_1 = self.fig.add_subplot(gs_options[0,0])
         ax_oper_plots = self.fig.add_subplot(gs_options[1, 0])
@@ -68,9 +71,7 @@ class Viewer(object):
         ax_time_slider = self.fig.add_subplot(gs_navigate[0, 5])
         ax_navigate = {nm: self.fig.add_subplot(gs_navigate[0, i]) for i, nm in enumerate(['Prev', 'Play', 'Pause', 'Next', 'Update'])}
 
-        self.dist_var_sel_btn = self.add_radio_button(ax_map_var_slect, 'Dist_Vars', self.dist_vars, self.OnDistVarBtnClk)
-        #self.geo_data_sel_btn = self.add_radio_button(ax_geo_data_slect, 'Geo_Data', self.geo_data,
-        #                                              self.OnGeoDataBtnClk)
+
         self.add_radio_button(ax_pt_var_slect, 'Pt_Source', ['Prec', 'Temp'], None)
         self.add_check_button(ax_options_1, 'Options', list(self.plt_mode.keys()), list(self.plt_mode.values()), self.OnPltModeBtnClk)
         self.add_check_button(ax_oper_plots, 'Custom Plots', ['PTQ'], [True], self.OnCustomPltBtnClk)
@@ -79,9 +80,16 @@ class Viewer(object):
         self.add_media_button(ax_navigate)
         self.reset_lim_btn = self.add_reset_button(ax_reset_button, 'Reset', self.update_cbar_by_data_lim)
 
-        #self.dist_var_sel_btn.set_active(self.dist_vars.index(self.dist_var)) # not available on older version of matplotlib
+        self.dist_var_sel_btn = self.add_radio_button(ax_map_var_slect, 'Dist_Vars', self.dist_vars, self.OnDistVarBtnClk)
+        self.dist_var_sel_btn.set_active(self.dist_vars.index(self.dist_var)) # not available on older version of matplotlib
 
-        self.add_plot()
+        self.dataset_sel_btn = self.add_radio_button(ax_dataset_slect, 'Datasets', self.dataset_names,
+                                                      self.OnDatasetSelect)
+        self.dataset_sel_btn.set_active(self.dataset_names.index(self.dataset_active))
+
+
+
+        self.add_plot(data_ext)
         self.set_labels()
 
         gs.tight_layout(self.fig)
@@ -91,7 +99,7 @@ class Viewer(object):
         plt.show()
 
 
-    def add_plot(self):
+    def add_plot(self, data_ext):
         self.map = self.ax_plt.add_collection(PatchCollection(self.patches, alpha=0.9))
         self.ax_plt.set_xlim(self.bbox[0], self.bbox[2])
         self.ax_plt.set_ylim(self.bbox[1], self.bbox[3])
@@ -106,6 +114,9 @@ class Viewer(object):
     def update_cbar(self, event):
         self.map.set_clim([self.slidermin.val, self.slidermax.val])
         self.fig.canvas.draw()
+
+    def OnDatasetSelect(self, label):
+        self.dataset_active = label
 
     def OnDistVarBtnClk(self, label):
         self.ax_plt.set_title(self.ax_plt.get_title().replace(self.dist_var, label), fontsize=12)

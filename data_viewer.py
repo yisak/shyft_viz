@@ -32,8 +32,8 @@ class Viewer(object):
         self.times = list(times.values())[0]
         # --------------------------------------------------------
 
-        self.alreadyplottedCatchIndx = {k: np.zeros((len(v.geom.polys)), dtype=np.int) for k, v in data_ext.items()}
-        self.alreadyplottedDistVar = {k: [] for k in data_ext}
+        #self.alreadyplottedCatchIndx = {k: np.zeros((len(v.geom.polys)), dtype=np.int) for k, v in data_ext.items()}
+        #self.alreadyplottedDistVar = {k: [] for k in data_ext}
 
         self.ds_names = list(data_ext.keys())
         self.ds_active = self.ds_names[0]
@@ -49,7 +49,10 @@ class Viewer(object):
         self.ti = 0
         self.data = None
 
-        self.tsplot = TsPlot(datetime.utcfromtimestamp(time_marker) if time_marker is not None else time_marker)
+        self.time_marker = datetime.utcfromtimestamp(time_marker) if time_marker is not None else time_marker
+
+        #self.tsplot = TsPlot(datetime.utcfromtimestamp(time_marker) if time_marker is not None else time_marker)
+        self.tsplots = []
 
         self.plt_mode = {'Plot_Source': False, 'Multi_Series': False, 'Re-plot': False, 'Custom_Plot': True}
         self.custom_plt_vars = {'PTQ': ['temp', 'q_avg', 'prec']}
@@ -58,7 +61,7 @@ class Viewer(object):
 
         self.data_lim_current = {nm: [0, 1] for nm in self.dist_vars}
 
-        self.fig = plt.figure(1, (15, 6))#, facecolor='white')
+        self.fig = plt.figure(figsize=(15, 6))#, facecolor='white')
         gs = gridspec.GridSpec(1, 3, width_ratios=[0.1,0.7,0.2]) #, height_ratios=[2,1])
 
         gs_var_select = gridspec.GridSpecFromSubplotSpec(3, 1, subplot_spec=gs[0, 0])
@@ -299,9 +302,15 @@ class Viewer(object):
             catchind = self.which_catch(x, y)
             print(catchind)
             if catchind is None: return True
-            if self.tsplot.fig is None:
-                self.alreadyplottedCatchIndx[self.ds_active][:] = 0
-                self.alreadyplottedDistVar[self.ds_active] = []
+            tsplots_active = [p for p in self.tsplots if p.fig is not None and p.plt_mode['Plot_over']]
+            if len(tsplots_active)==0 or self.plt_mode['Custom_Plot']:
+                tsplot = TsPlot(self.time_marker)
+
+            #if self.tsplot.fig is None:
+                #self.alreadyplottedCatchIndx[self.ds_active][:] = 0
+                #self.alreadyplottedDistVar[self.ds_active] = []
+                tsplot.alreadyplottedCatchIndx = {k: np.zeros(self.nb_catch, dtype=np.int) for k in self.ds_names}
+                tsplot.alreadyplottedDistVar = {k: [] for k in self.ds_names}
                 #var_indx = np.nonzero(self.var_select)
                 if self.plt_mode['Custom_Plot']:
                     dist_vars = ['temp', 'q_avg', 'prec']
@@ -310,24 +319,32 @@ class Viewer(object):
 
 
                 #ts_v = self.data_ext.get_ts(self.dist_var, self.ts_fetching_lst[catchind])
-                self.tsplot.init_plot(self.times,
+                tsplot.init_plot(self.times,
                                       [self.data_ext[self.ds_active].get_ts(dist_var, self.ts_fetching_lst[self.ds_active][catchind]) for dist_var in dist_vars],
                                       [dist_var + '_' + self.catch_nms[self.ds_active][catchind] for dist_var in dist_vars],
                                       [self.var_units[self.ds_active][dist_var] for dist_var in dist_vars])
+                tsplot.alreadyplottedCatchIndx[self.ds_active][catchind] = 1
+                tsplot.alreadyplottedDistVar[self.ds_active].append(self.dist_var)
+                self.tsplots.append(tsplot)
             else:
-                if self.alreadyplottedCatchIndx[self.ds_active][catchind] and self.dist_var in self.alreadyplottedDistVar[self.ds_active] and not self.plt_mode['Re-plot']: return True
-                if not self.plt_mode['Multi_Series']:
-                    self.tsplot.clear_plot()
-                    self.alreadyplottedCatchIndx[self.ds_active][:] = 0
-                    self.alreadyplottedDistVar[self.ds_active] = []
-                #var_indx = np.nonzero(self.var_select)
-                ts_v = self.data_ext[self.ds_active].get_ts(self.dist_var, self.ts_fetching_lst[self.ds_active][catchind])
-                print(self.dist_var)
-                self.tsplot.add_plot(self.times, [ts_v],
-                                     [self.dist_var + '_' + self.catch_nms[self.ds_active][catchind]],
-                                     [self.var_units[self.ds_active][self.dist_var]])
-            self.alreadyplottedCatchIndx[self.ds_active][catchind] = 1
-            self.alreadyplottedDistVar[self.ds_active].append(self.dist_var)
+                for tsplot in tsplots_active:
+                    #if self.alreadyplottedCatchIndx[self.ds_active][catchind] and self.dist_var in self.alreadyplottedDistVar[self.ds_active] and not self.plt_mode['Re-plot']: return True
+                    if tsplot.alreadyplottedCatchIndx[self.ds_active][catchind] and self.dist_var in \
+                            tsplot.alreadyplottedDistVar[self.ds_active] and not tsplot.plt_mode['Re-plot']: return True
+                    # if not self.plt_mode['Multi_Series']:
+                    #     self.tsplot.clear_plot()
+                    #     self.alreadyplottedCatchIndx[self.ds_active][:] = 0
+                    #     self.alreadyplottedDistVar[self.ds_active] = []
+                    #var_indx = np.nonzero(self.var_select)
+                    ts_v = self.data_ext[self.ds_active].get_ts(self.dist_var, self.ts_fetching_lst[self.ds_active][catchind])
+                    print(self.dist_var)
+                    tsplot.add_plot(self.times, [ts_v],
+                                         [self.dist_var + '_' + self.catch_nms[self.ds_active][catchind]],
+                                         [self.var_units[self.ds_active][self.dist_var]])
+                    tsplot.alreadyplottedCatchIndx[self.ds_active][catchind] = 1
+                    tsplot.alreadyplottedDistVar[self.ds_active].append(self.dist_var)
+            #self.alreadyplottedCatchIndx[self.ds_active][catchind] = 1
+            #self.alreadyplottedDistVar[self.ds_active].append(self.dist_var)
 
 
 class TsPlot(object):
@@ -344,6 +361,21 @@ class TsPlot(object):
         self.temp = [0.85, 0.75, 0.6]
         self.i = 1
 
+        self.plt_mode = {'Plot_over': False, 'Re-plot': False}
+        self.gs = gridspec.GridSpec(1, 2, width_ratios=[0.1, 0.9])  # , height_ratios=[2,1])
+
+
+    def add_check_button(self, but_ax1, title, labels, vals, func):
+        axcolor = 'lightgoldenrodyellow'
+        but_ax1.set_title(title)
+        check = CheckButtons(but_ax1, labels, vals)
+        check.on_clicked(func)
+        return check
+
+    def OnPltModeBtnClk(self, label):
+        self.plt_mode[label] = not self.plt_mode[label]
+        print(label,self.plt_mode[label])
+
     def reset_plot(self):
         self.plotted_unit = []
         self.axes = []
@@ -353,8 +385,12 @@ class TsPlot(object):
 
 
     def init_plot(self, t, v, labels, units):
-        self.fig, self.ax = plt.subplots()
-        gs = gridspec.GridSpec(1, 3, width_ratios=[0.1, 0.7, 0.2])  # , height_ratios=[2,1])
+        #self.fig, self.ax = plt.subplots()
+        self.fig = plt.figure()#, (15, 6))  # , facecolor='white')
+        self.ax = self.fig.add_subplot(self.gs[0, 1])
+        ax_options_1 = self.fig.add_subplot(self.gs[0, 0])
+        self.option_btn = self.add_check_button(ax_options_1, 'Options', list(self.plt_mode.keys()),
+                                                list(self.plt_mode.values()), self.OnPltModeBtnClk)
         #self.ax = host_subplot(111)
 
         #self.fig.subplots_adjust(hspace=0.1, bottom=0.2)
@@ -366,6 +402,7 @@ class TsPlot(object):
         self.add_plot(t, v, labels, units)
         #self.multi = MultiCursor(self.fig.canvas, self.ax, color='r', lw=1)
         self.cursor = Cursor(self.ax, useblit=True, color='red', linewidth=2)
+        self.gs.tight_layout(self.fig)
 
     def add_plot(self, t, v, labels, units):
         for k in range(len(v)):

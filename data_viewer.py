@@ -4,15 +4,39 @@ from matplotlib import gridspec
 from matplotlib.widgets import Slider, RadioButtons, CheckButtons, Button, Cursor
 from matplotlib.collections import PatchCollection
 import matplotlib.dates as mdates
-from mpl_toolkits.axes_grid1 import make_axes_locatable, host_subplot
+from matplotlib.lines import Line2D
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 from shapely.geometry import Point
 from datetime import datetime
 from itertools import cycle
 
 
-class Viewer(object):
-    def __init__(self, data_ext, time_marker=None):
+def plot_background(ax, f_path):
+    from osgeo import gdal
+    gdal.UseExceptions()
 
+    # ds = gdal.Open('G:/Work/ENKI/NVE_Atlas/Vinjevatn_background_3.tiff')
+    ds = gdal.Open(f_path)
+    # band = ds.GetRasterBand(1)
+    # elevation = band.ReadAsArray()
+    elevation = ds.ReadAsArray()  # all bands
+
+    nrows, ncols = elevation[0].shape
+
+    # I'm making the assumption that the image isn't rotated/skewed/etc.
+    # This is not the correct method in general, but let's ignore that for now
+    # If dxdy or dydx aren't 0, then this will be incorrect
+    x0, dx, dxdy, y0, dydx, dy = ds.GetGeoTransform()
+
+    x1 = x0 + dx * ncols
+    y1 = y0 + dy * nrows
+
+    # plt.imshow(elevation, cmap='gist_earth', extent=[x0, x1, y1, y0])
+    ax.imshow(np.rollaxis(elevation, 0, 3), cmap='gist_earth', extent=[x0, x1, y1, y0])  # all bands
+
+
+class Viewer(object):
+    def __init__(self, data_ext, time_marker=None, background=False, data_ext_pt=None):
         self.data_ext = {k: v for k, v in data_ext.items()}
         self.map_fetching_lst = {k: v.map_fetching_lst for k, v in data_ext.items()}
         self.ts_fetching_lst = {k: v.ts_fetching_lst for k, v in data_ext.items()}
@@ -34,6 +58,12 @@ class Viewer(object):
 
         #self.alreadyplottedCatchIndx = {k: np.zeros((len(v.geom.polys)), dtype=np.int) for k, v in data_ext.items()}
         #self.alreadyplottedDistVar = {k: [] for k in data_ext}
+        if data_ext_pt is not None:
+            self.data_ext_pt = data_ext_pt  # {k: v for k, v in data_ext_pt.items()}
+            self.ds_names_pt = ['SNOWMAN']
+            self.ds_actve_pt = ['SNOWMAN']
+            self.pt_vars = ['swe']
+            self.pt_var = 'swe'
 
         self.ds_names = list(data_ext.keys())
         self.ds_active = self.ds_names[0]
@@ -54,7 +84,10 @@ class Viewer(object):
         #self.tsplot = TsPlot(datetime.utcfromtimestamp(time_marker) if time_marker is not None else time_marker)
         self.tsplots = []
 
-        self.plt_mode = {'Plot_Source': False, 'Multi_Series': False, 'Re-plot': False, 'Custom_Plot': True}
+        #self.plt_mode = {'Plot_Source': False, 'Multi_Series': False, 'Re-plot': False, 'Custom_Plot': True}
+        self.plt_mode = {'Plot_Source': False, 'Custom_Plot': True}
+        plt_mode_label = list(self.plt_mode.keys())
+        plt_mode_val = [self.plt_mode[k] for k in plt_mode_label]
         self.custom_plt_vars = {'PTQ': ['temp', 'q_avg', 'prec']}
         self.custom_plt_types = list(self.custom_plt_vars.keys())
         self.custom_plt_active = self.custom_plt_types[0]
@@ -74,7 +107,11 @@ class Viewer(object):
         ax_dataset_slect = self.fig.add_subplot(gs_var_select[0, 0])
         ax_map_var_slect = self.fig.add_subplot(gs_var_select[1, 0])
         #ax_geo_data_slect = self.fig.add_subplot(gs_var_select[1, 0])
-        ax_pt_var_slect = self.fig.add_subplot(gs_var_select[2, 0])
+        if data_ext_pt is not None:
+            ax_pt_var_slect = self.fig.add_subplot(gs_var_select[2, 0])
+            self.add_pt_plot()
+            self.fig.canvas.mpl_connect('pick_event', self.on_pick)
+
         #ax_options_1 = self.fig.add_subplot(gs[0,2])
         ax_options_1 = self.fig.add_subplot(gs_options[0,0])
         ax_oper_plots = self.fig.add_subplot(gs_options[1, 0])
@@ -84,12 +121,18 @@ class Viewer(object):
         ax_time_slider = self.fig.add_subplot(gs_navigate[0, 5])
         ax_navigate = {nm: self.fig.add_subplot(gs_navigate[0, i]) for i, nm in enumerate(['Prev', 'Play', 'Pause', 'Next', 'Update'])}
 
+        if background:
+            plot_background(self.ax_plt, 'G:/Work/shyft/background_img/NeaNidelva_background_3.tiff')
+
         self.add_plot()
         self.set_labels()
         #self.cbar[self.ds_active].set_visible(True)
 
-        self.add_radio_button(ax_pt_var_slect, 'Pt_Source', ['Prec', 'Temp'], None)
-        self.option_btn = self.add_check_button(ax_options_1, 'Options', list(self.plt_mode.keys()), list(self.plt_mode.values()), self.OnPltModeBtnClk)
+        if data_ext_pt is None:
+            i = plt_mode_label.index('Plot_Source')
+            del plt_mode_label[i]
+            del plt_mode_val[i]
+        self.option_btn = self.add_check_button(ax_options_1, 'Options', plt_mode_label, plt_mode_val, self.OnPltModeBtnClk)
         self.custom_plt_btn = self.add_radio_button(ax_oper_plots, 'Custom Plots', self.custom_plt_types,
                                                     self.OnCustomPltBtnClk)
         self.custom_plt_btn.set_active(self.custom_plt_types.index(self.custom_plt_active))
@@ -97,7 +140,8 @@ class Viewer(object):
         self.add_time_slider(ax_time_slider)
         self.add_media_button(ax_navigate)
         self.reset_lim_btn = self.add_reset_button(ax_reset_button, 'Reset', self.update_cbar_by_data_lim)
-
+        if data_ext_pt is not None:
+            self.pt_var_sel_btn = self.add_radio_button(ax_pt_var_slect, 'Pt_Vars', self.pt_vars, None)
         self.dist_var_sel_btn = self.add_radio_button(ax_map_var_slect, 'Dist_Vars', self.dist_vars, self.OnDistVarBtnClk)
         self.dist_var_sel_btn.set_active(self.dist_vars.index(self.dist_var)) # not available on older version of matplotlib
 
@@ -108,6 +152,8 @@ class Viewer(object):
         gs.tight_layout(self.fig)
 
         self.timer = self.fig.canvas.new_timer(interval=50)
+        #if data_ext_pt is not None:
+        #    self.fig.canvas.mpl_connect('pick_event', self.on_pick)
         self.fig.canvas.mpl_connect('button_press_event', self.on_click)
         plt.show()
 
@@ -126,8 +172,12 @@ class Viewer(object):
             self.cbar[ds] = self.fig.colorbar(self.map[ds], cax=cax, orientation='vertical')
             self.map[ds].set_visible(False)
 
+    def add_pt_plot(self):
+        self.ax_plt.plot(self.data_ext_pt.coord[:, 0], self.data_ext_pt.coord[:, 1], marker='o', ls='None', ms=8, mfc='none',
+                        mec='r', mew=2, picker=5)
+
     def update_cbar(self, event):
-        self.map[ds_active].set_clim([self.slidermin.val, self.slidermax.val])
+        self.map[self.ds_active].set_clim([self.slidermin.val, self.slidermax.val])
         self.fig.canvas.draw()
 
     def OnDatasetSelect(self, label):
@@ -135,6 +185,7 @@ class Viewer(object):
         print(label)
         self.map[label].set_visible(True)
         self.ds_active = label
+        self.data = self.map[self.ds_active].get_array()
         self.fig.canvas.draw()
 
     def OnDistVarBtnClk(self, label):
@@ -302,49 +353,98 @@ class Viewer(object):
             catchind = self.which_catch(x, y)
             print(catchind)
             if catchind is None: return True
+            unique_names = [self.ds_active + '_' + self.dist_var + '_' + self.catch_nms[self.ds_active][catchind]]
             tsplots_active = [p for p in self.tsplots if p.fig is not None and p.plt_mode['Plot_over']]
             if len(tsplots_active)==0 or self.plt_mode['Custom_Plot']:
                 tsplot = TsPlot(self.time_marker)
-
-            #if self.tsplot.fig is None:
-                #self.alreadyplottedCatchIndx[self.ds_active][:] = 0
-                #self.alreadyplottedDistVar[self.ds_active] = []
-                tsplot.alreadyplottedCatchIndx = {k: np.zeros(self.nb_catch, dtype=np.int) for k in self.ds_names}
-                tsplot.alreadyplottedDistVar = {k: [] for k in self.ds_names}
-                #var_indx = np.nonzero(self.var_select)
+                # tsplot.alreadyplottedPtIndx = np.zeros(self.data_ext_pt.nb_pts, dtype=np.int)
+                # tsplot.alreadyplottedPtVar = []
+                # tsplot.alreadyplottedCatchIndx = {k: np.zeros(self.nb_catch[k], dtype=np.int) for k in self.ds_names}
+                # tsplot.alreadyplottedDistVar = {k: [] for k in self.ds_names}
+                tsplot.unique_ts_names = []
                 if self.plt_mode['Custom_Plot']:
                     dist_vars = ['temp', 'q_avg', 'prec']
+                    unique_names = [self.ds_active + '_' + dist_var + '_' + self.catch_nms[self.ds_active][catchind] for dist_var in dist_vars]
                 else:
                     dist_vars = [self.dist_var]
 
-
-                #ts_v = self.data_ext.get_ts(self.dist_var, self.ts_fetching_lst[catchind])
+                props = [{} for _ in dist_vars]
+                if 'prec' in dist_vars:
+                    props[dist_vars.index('prec')].update({'drawstyle':'steps'})
                 tsplot.init_plot(self.times,
                                       [self.data_ext[self.ds_active].get_ts(dist_var, self.ts_fetching_lst[self.ds_active][catchind]) for dist_var in dist_vars],
-                                      [dist_var + '_' + self.catch_nms[self.ds_active][catchind] for dist_var in dist_vars],
-                                      [self.var_units[self.ds_active][dist_var] for dist_var in dist_vars])
-                tsplot.alreadyplottedCatchIndx[self.ds_active][catchind] = 1
-                tsplot.alreadyplottedDistVar[self.ds_active].append(self.dist_var)
+                                 unique_names, # [dist_var + '_' + self.catch_nms[self.ds_active][catchind] for dist_var in dist_vars],
+                                      [self.var_units[self.ds_active][dist_var] for dist_var in dist_vars], props)
+                # tsplot.alreadyplottedCatchIndx[self.ds_active][catchind] = 1
+                tsplot.unique_ts_names.extend(unique_names)
+                # tsplot.alreadyplottedDistVar[self.ds_active].extend(dist_vars)
                 self.tsplots.append(tsplot)
             else:
                 for tsplot in tsplots_active:
-                    #if self.alreadyplottedCatchIndx[self.ds_active][catchind] and self.dist_var in self.alreadyplottedDistVar[self.ds_active] and not self.plt_mode['Re-plot']: return True
-                    if tsplot.alreadyplottedCatchIndx[self.ds_active][catchind] and self.dist_var in \
-                            tsplot.alreadyplottedDistVar[self.ds_active] and not tsplot.plt_mode['Re-plot']: return True
-                    # if not self.plt_mode['Multi_Series']:
-                    #     self.tsplot.clear_plot()
-                    #     self.alreadyplottedCatchIndx[self.ds_active][:] = 0
-                    #     self.alreadyplottedDistVar[self.ds_active] = []
-                    #var_indx = np.nonzero(self.var_select)
+                    print(self.ds_active)
+                    # if tsplot.alreadyplottedCatchIndx[self.ds_active][catchind] and self.dist_var in \
+                    #         tsplot.alreadyplottedDistVar[self.ds_active] and not tsplot.plt_mode['Re-plot']: return True
+                    if unique_names[0] in tsplot.unique_ts_names and not tsplot.plt_mode['Re-plot']: return True
+                    if tsplot.plt_mode['Re-plot']:
+                        unique_names[0] = unique_names[0]+'_1'
+
                     ts_v = self.data_ext[self.ds_active].get_ts(self.dist_var, self.ts_fetching_lst[self.ds_active][catchind])
                     print(self.dist_var)
                     tsplot.add_plot(self.times, [ts_v],
-                                         [self.dist_var + '_' + self.catch_nms[self.ds_active][catchind]],
-                                         [self.var_units[self.ds_active][self.dist_var]])
-                    tsplot.alreadyplottedCatchIndx[self.ds_active][catchind] = 1
-                    tsplot.alreadyplottedDistVar[self.ds_active].append(self.dist_var)
-            #self.alreadyplottedCatchIndx[self.ds_active][catchind] = 1
-            #self.alreadyplottedDistVar[self.ds_active].append(self.dist_var)
+                                         unique_names, # [self.dist_var + '_' + self.catch_nms[self.ds_active][catchind]],
+                                         [self.var_units[self.ds_active][self.dist_var]], [{}])
+                    # tsplot.alreadyplottedCatchIndx[self.ds_active][catchind] = 1
+                    # tsplot.alreadyplottedDistVar[self.ds_active].append(self.dist_var)
+                    tsplot.unique_ts_names.extend(unique_names)
+
+
+
+    def on_pick(self, event):
+        tb = self.fig.canvas.manager.toolbar
+        if self.plt_mode['Plot_Source'] and tb.mode == '':
+
+            # if event.artist!=self.overview: return True
+
+            N = len(event.ind)
+            if not N: return True
+
+            # the click locations
+            x = event.mouseevent.xdata
+            y = event.mouseevent.ydata
+
+            distances = np.hypot(x - self.data_ext_pt.coord[event.ind, 0], y - self.data_ext_pt.coord[event.ind, 1])
+            indmin = distances.argmin()
+            catchind = event.ind[indmin]
+
+            self.lastind = catchind
+            tsplots_active = [p for p in self.tsplots if p.fig is not None and p.plt_mode['Plot_over']]
+            if len(tsplots_active)==0: # or self.plt_mode['Custom_Plot']:
+                tsplot = TsPlot(self.time_marker)
+
+                tsplot.alreadyplottedPtIndx = np.zeros(self.data_ext_pt.nb_pts, dtype=np.int)
+                tsplot.alreadyplottedPtVar = []
+                tsplot.unique_ts_names = []
+                ts_t, ts_v = self.data_ext_pt.get_ts(self.pt_var, catchind)
+                tsplot.init_plot(ts_t, [ts_v],
+                                         [self.pt_var + '_' + self.data_ext_pt.names[catchind]],
+                                         [self.data_ext_pt.units[self.pt_var]],[{'ls':'None'}])
+                tsplot.alreadyplottedPtIndx[catchind] = 1
+                tsplot.alreadyplottedPtVar.append(self.pt_var)
+                tsplot.unique_ts_names.extend([self.pt_var + '_' + self.data_ext_pt.names[catchind]])
+                self.tsplots.append(tsplot)
+            else:
+                for tsplot in tsplots_active:
+                    if tsplot.alreadyplottedPtIndx[catchind] and self.pt_var in \
+                            tsplot.alreadyplottedPtVar and not tsplot.plt_mode['Re-plot']: return True
+
+                    ts_t, ts_v = self.data_ext_pt.get_ts(self.pt_var, catchind)
+                    print(self.pt_var)
+                    tsplot.add_plot(ts_t, [ts_v],
+                                         [self.pt_var + '_' + self.data_ext_pt.names[catchind]],
+                                         [self.data_ext_pt.units[self.pt_var]], [{'ls':'None'}])
+                    tsplot.alreadyplottedPtIndx[catchind] = 1
+                    tsplot.alreadyplottedPtVar.append(self.pt_var)
+                    tsplot.unique_ts_names.extend([self.pt_var + '_' + self.data_ext_pt.names[catchind]])
 
 
 class TsPlot(object):
@@ -356,8 +456,22 @@ class TsPlot(object):
         self.axes = None
         self.reset_plot()
         self.colors = ('Green', 'Red', 'Blue', 'Cyan') # colors = cycle(matplotlib.rcParams['axes.color_cycle']) # plt.rcParams['axes.color_cycle']
-        self.line_styles = [cycle(['-', '--', '-.', ':', '.', ',', 'o', 'v', '^', '<', '>',
-                                  '1', '2', '3', '4', 's', 'p', '*', 'h', 'H', '+', 'x', 'D', 'd', '|', '_']) for _ in range(4)]
+        #colors = ('b', 'g', 'r', 'c', 'm', 'y', 'k')
+        #self.line_styles = [cycle(['-', '--', '-.', ':', '.', ',', 'o', 'v', '^', '<', '>',
+        #                         '1', '2', '3', '4', 's', 'p', '*', 'h', 'H', '+', 'x', 'D', 'd', '|', '_']) for _ in range(4)]
+        self.line_styles = [cycle(['-', '--', '-.', ':']) for _ in range(4)]
+        # Filter out filled markers and marker settings that do nothing.
+        # We use iteritems from six to make sure that we get an iterator
+        # in both python 2 and 3
+        unfilled_markers = [m for m, func in Line2D.markers.items()
+                            if func != 'nothing' and m not in Line2D.filled_markers]
+        markers = {'*': 'star', '2': 'tri_up', 2: 'tickup', 'o': 'circle', 4: 'caretleft', 5: 'caretright',
+                   '_': 'hline', '.': 'point', 'd': 'thin_diamond', '4': 'tri_right', '': 'nothing', 'None': 'nothing',
+                   3: 'tickdown', ' ': 'nothing', 7: 'caretdown', 'x': 'x', 0: 'tickleft', '+': 'plus',
+                   '<': 'triangle_left', '|': 'vline', '8': 'octagon', 1: 'tickright', 6: 'caretup', 's': 'square',
+                   'p': 'pentagon', ',': 'pixel', '^': 'triangle_up', 'D': 'diamond', None: 'nothing', 'H': 'hexagon2',
+                   '3': 'tri_left', '>': 'triangle_right', 'h': 'hexagon1', 'v': 'triangle_down', '1': 'tri_down'}
+        self.markers = [cycle(['o', '*', 's', 'v', 'x', 'p', '+']) for _ in range(4)]
         self.temp = [0.85, 0.75, 0.6]
         self.i = 1
 
@@ -384,7 +498,7 @@ class TsPlot(object):
         #self.cursor = Cursor(self.ax, useblit=True, color='red', linewidth=2)
 
 
-    def init_plot(self, t, v, labels, units):
+    def init_plot(self, t, v, labels, units, prop):
         #self.fig, self.ax = plt.subplots()
         self.fig = plt.figure()#, (15, 6))  # , facecolor='white')
         self.ax = self.fig.add_subplot(self.gs[0, 1])
@@ -399,17 +513,25 @@ class TsPlot(object):
         #self.subplot_autofmt_xdate(self.fig.axes[-1])
         # self.subplot_autofmt_xdate(self.ax) # for multiple subplots
         self.fig.autofmt_xdate() # for one subplot
-        self.add_plot(t, v, labels, units)
+        self.add_plot(t, v, labels, units, prop)
         #self.multi = MultiCursor(self.fig.canvas, self.ax, color='r', lw=1)
         self.cursor = Cursor(self.ax, useblit=True, color='red', linewidth=2)
         self.gs.tight_layout(self.fig)
 
-    def add_plot(self, t, v, labels, units):
+    def plot(self,ax, t, v, kwargs):
+        return ax.plot(t, v, **kwargs)[0]
+
+    def add_plot(self, t, v, labels, units, prop):
         for k in range(len(v)):
             if (not np.all(np.isnan(v[k]))):
                 if (len(self.plotted_unit) == 0):
                     self.axes.append(self.ax)
-                    self.lines.append(self.axes[0].plot(t, v[k], ls=next(self.line_styles[0]), color=self.colors[0], label=labels[k])[0])
+                    #self.lines.append(self.axes[0].plot(t, v[k], ls=next(self.line_styles[0]), color=self.colors[0], label=labels[k], marker=marker, ms=8, markevery=None)[0])
+                    l_prop = dict(ls='-', color=self.colors[0], label=labels[k], marker=next(self.markers[0]), ms=8, markevery=None)
+                    l_prop.update(prop[k])
+                    self.lines.append(self.plot(self.axes[0],t, v[k], l_prop))
+                    #self.lines.append(self.axes[0].plot(t, v[k], ls=ls, color=self.colors[0], label=labels[k], marker=next(self.markers[0]), ms=8, markevery=None, drawstyle='steps')[0])
+
                     self.plotted_unit.append(units[k])
                     self.axes[0].set_ylabel(units[k],color=self.colors[0])
                     self.axes[0].tick_params(axis='y', colors=self.colors[0])
@@ -419,34 +541,44 @@ class TsPlot(object):
                     if (units[k] in self.plotted_unit):
                         idx=self.plotted_unit.index(units[k])
                         color = self.colors[idx]
-                        self.lines.append(self.axes[idx].plot(t, v[k], ls=next(self.line_styles[idx]), color=color, label=labels[k])[0])
+                        #self.lines.append(self.axes[idx].plot(t, v[k], ls=next(self.line_styles[idx]), color=color, label=labels[k], marker=marker, ms=8, markevery=None)[0])
+                        l_prop = dict(ls='-', color=color, label=labels[k], marker=next(self.markers[0]), ms=8, markevery=None)
+                        l_prop.update(prop[k])
+                        self.lines.append(self.plot(self.axes[idx], t, v[k], l_prop))
+                        #self.lines.append(self.axes[idx].plot(t, v[k], ls=ls, color=color, label=labels[k], marker=next(self.markers[0]), ms=8, markevery=None)[0])
+
                         self.axes[idx].tick_params(axis='y', colors=color)
                     else:
                         self.plotted_unit.append(units[k])
                         idx = self.plotted_unit.index(units[k])
                         color = self.colors[idx]
                         self.axes.append(self.axes[0].twinx())
-                        self.lines.append(self.axes[-1].plot(t, v[k], ls=next(self.line_styles[idx]), color=color, label=labels[k])[0])
+                        #self.lines.append(self.axes[-1].plot(t, v[k], ls=next(self.line_styles[idx]), color=color, label=labels[k], marker=marker, ms=8, markevery=None)[0])
+                        l_prop = dict(ls='-', color=color, label=labels[k], marker=next(self.markers[0]), ms=8, markevery=None)
+                        l_prop.update(prop[k])
+                        self.lines.append(self.plot(self.axes[-1], t, v[k], l_prop))
+                        #self.lines.append(self.axes[-1].plot(t, v[k], ls=ls, color=color, label=labels[k], marker=next(self.markers[0]), ms=8, markevery=None)[0])
+
                         print(self.lines)
 
                         self.axes[-1].set_ylabel(units[k])
                         self.axes[-1].format_coord = self.make_format(self.axes[-1], self.axes[0])
                         self.axes[-1].tick_params(axis='y', colors=color)
 
-                    if len(self.axes)>2:
-                        # Make some space on the right side for the extra y-axis.
-                        #self.fig.subplots_adjust(right=0.75)
-                        temp = self.temp[len(self.axes)-2]
-                        right_additive = (0.98 - temp) / float(len(self.axes)-2)
-                        self.fig.subplots_adjust(right=temp)
-                        # Move the last y-axis spine over to the right by 20% of the width of the axes
-                        #self.axes[-1].spines['right'].set_position(('axes', 1.2))
-                        self.axes[-1].spines['right'].set_position(('axes', 1. + right_additive * self.i))
-                        self.i += 1
-                        # To make the border of the right-most axis visible, we need to turn the frame
-                        # on. This hides the other plots, however, so we need to turn its fill off.
-                        self.axes[-1].set_frame_on(True)
-                        self.axes[-1].patch.set_visible(False)
+                        if len(self.axes)>2:
+                            # Make some space on the right side for the extra y-axis.
+                            #self.fig.subplots_adjust(right=0.75)
+                            temp = self.temp[len(self.axes)-2]
+                            right_additive = (0.98 - temp) / float(len(self.axes)-2)
+                            self.fig.subplots_adjust(right=temp)
+                            # Move the last y-axis spine over to the right by 20% of the width of the axes
+                            #self.axes[-1].spines['right'].set_position(('axes', 1.2))
+                            self.axes[-1].spines['right'].set_position(('axes', 1. + right_additive * self.i))
+                            self.i += 1
+                            # To make the border of the right-most axis visible, we need to turn the frame
+                            # on. This hides the other plots, however, so we need to turn its fill off.
+                            self.axes[-1].set_frame_on(True)
+                            self.axes[-1].patch.set_visible(False)
 
                 # self.axes[i][0].legend()
 

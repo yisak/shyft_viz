@@ -16,7 +16,7 @@ class SMGDataExtractor(object):
         self.tsp = ref_repo[0]['repository'].read([ts_info['uid'] for ts_info in ref_repo[0]['1D_timeseries']],
                                                   shyft_data_ext.t_ax.total_period())
         self.catch_names, self.ts_uid = zip(*[(ts_info['module_name'],ts_info['uid']) for ts_info in ref_repo[0]['1D_timeseries']])
-        shyft_catch_names = shyft_data_ext.catch_names.tolist()
+        shyft_catch_names = shyft_data_ext.catch_names
         idx = [shyft_catch_names.index(c) for c in self.catch_names]
         self.geom = Geom(shyft_data_ext.geom, idx)
         self.map_fetching_lst = [0]

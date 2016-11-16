@@ -8,11 +8,11 @@ from .shyft_regmod_data import CellDataExtractor, SubcatDataExtractor
 class DataExtractor(object):
     def __init__(self, rm1, rm2, agg = False, catch_select=None, clip=False, catch_names=None):
         if agg:
-            self.cell_data_ext1 = SubcatDataExtractor(rm1, catch_select=None, clip=False, catch_names=None)
-            self.cell_data_ext2 = SubcatDataExtractor(rm2, catch_select=None, clip=False, catch_names=None)
+            self.cell_data_ext1 = SubcatDataExtractor(rm1, catch_select=catch_select, clip=clip, catch_names=catch_names)
+            self.cell_data_ext2 = SubcatDataExtractor(rm2, catch_select=catch_select, clip=clip, catch_names=catch_names)
         else:
-            self.cell_data_ext1 = CellDataExtractor(rm1, catch_select=None, clip=False, catch_names=None)
-            self.cell_data_ext2 = CellDataExtractor(rm2, catch_select=None, clip=False, catch_names=None)
+            self.cell_data_ext1 = CellDataExtractor(rm1, catch_select=catch_select, clip=clip, catch_names=catch_names)
+            self.cell_data_ext2 = CellDataExtractor(rm2, catch_select=catch_select, clip=clip, catch_names=catch_names)
         self.ts_fetching_lst = self.cell_data_ext1.ts_fetching_lst
         self.map_fetching_lst = self.cell_data_ext1.map_fetching_lst
         self.n1 = self.cell_data_ext1.t_ax.n

@@ -10,9 +10,6 @@ from setuptools import setup, find_packages
 # VERSION should be set in a previous build step (ex: TeamCity)
 VERSION = open('VERSION').read().strip()
 
-# Create temporary file
-open('version.py', 'w').write('__version__ = "%s"\n' % VERSION)
-
 
 setup(
     name='shyft_viz',
@@ -25,5 +22,5 @@ setup(
     packages=find_packages(),
     package_data={},
     entry_points={},
-    requires=[]
+    requires=['matplotlib', 'numpy']
 )

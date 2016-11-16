@@ -1,48 +1,17 @@
-import sys
-sys.path.insert(0,'D:/users/ysa/shyft_fork')
-sys.path.insert(0,'D:/users/ysa/shyft_main/shyft')
 import os
-
-import numpy as np
+import yaml
 from dateutil.parser import *
 from shyft import api
 from shyft.orchestration.configuration.yaml_configs import YAMLForecastConfig
 from shyft.orchestration.simulators.config_simulator import ConfigForecaster
 
-from shyft_viz.data_extractors.shyft_multi_regmod_data import DataExtractor
-from shyft_viz.data_extractors.smg_discharge_data import SMGDataExtractor
-from shyft_viz.data_viewer import Viewer
+from .data_extractors.shyft_multi_regmod_data import DataExtractor
+from .data_extractors.smg_discharge_data import SMGDataExtractor
+from .data_viewer import Viewer
 
 utc = api.Calendar()
-config_dir = "D:/users/ysa/shyft_config/yaml"
-shop_table = np.load("D:/users/ysa/shyft_config/yaml/shop_table.npy")
+config_dir = "D:/shyft_config/yaml"
 
-region_names = ['Nore',
-                'Mår',
-                'Tokke',
-                'Ulla-Førre',
-                'Folgefonn',
-                'Tyssedal',
-                'Sima',
-                'Bjølvo',
-                'Vik',
-                'Leirdøla',
-                'Jostedal',
-                'Høyanger',
-                'Grytten',
-                'Aura',
-                'Trollheim',
-                'Svorka',
-                'Nea-Nidelv',
-                'Røssåga',
-                'Rana',
-                'Svartisen',
-                'Kobbelv',
-                'Skjomen',
-                'Barduelva',
-                'Alta',
-                'Adamselv'
-                ]
 
 class Container(object):
     def __init__(self):
@@ -52,21 +21,27 @@ class Models(object):
     def __init__(self):
         self.region = Container()
         #self.shop_module = Container()
-        [setattr(self.region, rg_name.replace('-','_'), Region(rg_name)) for rg_name in region_names]
+        sim_cfg_file = os.path.join(config_dir, "simulation_config_realtime-run.yaml")
+        shop_cfg_file = os.path.join(config_dir, "shop_config.yaml")
+        with open(shop_cfg_file, encoding='utf8') as cfg:
+            shop_cfg = yaml.load(cfg)
+        region_names = list(shop_cfg.keys())
+        [setattr(self.region, rg_name.replace('-','_'), Region(rg_name, sim_cfg_file, shop_cfg)) for rg_name in region_names]
 
 class Region(object):
-    def __init__(self, rg_name):
+    def __init__(self, rg_name, sim_cfg_file, shop_cfg):
         self.rg_name = rg_name
         t_now = api.utctime_now()  # For usage with current date-time
         #t_now = utc.time(2016, 9, 3)  # For usage with any specified date-time
         self.t = utc.trim(t_now, api.Calendar.DAY)
 
-        self.config_file = os.path.join(config_dir, "simulation_config_realtime-run.yaml")
+        self.config_file = sim_cfg_file # os.path.join(config_dir, "simulation_config_realtime-run.yaml")
         #self.cfg = YAMLForecastConfig(self.config_file, rg_name, ['AROME'], forecast_time=self.t)
+        shop_cfg = shop_cfg[rg_name]
         self.rg_name = rg_name
         self.simulator = None
-        self.shop_module_names = np.unique(shop_table['shop_delfelt'][shop_table['shop_flomvassdrag'] == self.rg_name])
-        self.subcat_ids_in_shop_module = [shop_table['subcat_id'][shop_table['shop_delfelt'] == nm] for nm in self.shop_module_names]
+        self.shop_module_names, self.subcat_ids_in_shop_module = zip(*[(m['module_name'],[c['subcat_id'] for c in m['subcats_in_module']]) for m in shop_cfg if m['module_group']=='SHOP'])
+
 
     def _get_config(self):
         pass
@@ -98,8 +73,6 @@ class Region(object):
         smg_data_ext = SMGDataExtractor(module_data_ext, self.cfg.sim_config.get_reference_repo())
         return Viewer({'sim_Cell': cell_data_ext, 'sim_ShopModule': module_data_ext, 'obs_ShopModule': smg_data_ext},
                       {'PTQ': {'sim_ShopModule': ['temp', 'q_avg', 'prec'], 'obs_ShopModule': ['q_avg']}},
-                      time_marker=self.t, data_ext_pt=None, background=self.rg_name, default_var='q_avg', default_ds='sim_ShopModule')
-        #return SMGDataExtractor(module_data_ext, self.cfg.sim_config.get_reference_repo())
-
+                      time_marker=self.t, data_ext_pt=None, background=None, default_var='q_avg', default_ds='sim_ShopModule')
 
 models=Models()

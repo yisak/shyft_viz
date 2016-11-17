@@ -10,7 +10,7 @@ from .data_extractors.smg_discharge_data import SMGDataExtractor
 from .data_viewer import Viewer
 
 utc = api.Calendar()
-config_dir = "D:/shyft_config/yaml"
+config_dir = os.path.join(os.getenv('SHYFTDATA', '.'), '..', 'shyft_config', 'yaml')
 
 
 class Container(object):

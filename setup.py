@@ -9,6 +9,7 @@ from setuptools import setup, find_packages
 
 # VERSION should be set in a previous build step (ex: TeamCity)
 VERSION = open('VERSION').read().strip()
+open('shyft_viz/version.py', 'w').write('__version__ = "%s"\n' % VERSION)
 
 
 setup(

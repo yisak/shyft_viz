@@ -214,7 +214,6 @@ class Viewer(object):
 
     def OnDatasetSelect(self, label):
         self.map[self.ds_active].set_visible(False)
-        #print(label)
         self.map[label].set_visible(True)
         self.ds_active = label
         self.data = self.map[self.ds_active].get_array()
@@ -226,34 +225,22 @@ class Viewer(object):
         print(self.dist_var)
         if self.dist_var in self.geo_data:
             self.data = self.data_ext[self.ds_active].get_geo_data(self.dist_var, self.map_fetching_lst[self.ds_active])
-            [self.media_buttons[nm].disconnect(cid) for nm, cid in zip(self.media_btn_nms, self.media_btn_cids)]
         else:
             self.data = self.data_ext[self.ds_active].get_map(self.dist_var, self.map_fetching_lst[self.ds_active], self.ti)
-            self.media_btn_cids = [getattr(self.media_buttons[nm], 'on_clicked')(func) for nm, func in
-                                   zip(self.media_btn_nms, self.media_btn_funcs)]
         self.map[self.ds_active].set_array(self.data)
-        #self.map.set_clim([data.min(), data.max()])
-        lo, hi = self.data_lim_current[self.dist_var]
-        self.map[self.ds_active].set_clim([self.scale_data_lim(v) for v in [lo, hi]])
-        self.slidermin.set_val(lo)
-        self.slidermax.set_val(hi)
-        #self.map.update_scalarmappable()
-
-        self.fig.canvas.draw()
+        self.update_cbar_by_data_lim()
 
     def OnCustomPltBtnClk(self, label):
         self.custom_plt_type = label
 
     def OnPltModeBtnClk(self, label):
         self.plt_mode[label] = not self.plt_mode[label]
-        #print(label,self.plt_mode[label])
 
     def update_cbar_by_slider_lim(self):
         self.map[self.ds_active].set_clim([self.scale_data_lim(v) for v in [self.slidermin.val, self.slidermax.val]])
         self.fig.canvas.draw()
 
-    def update_cbar_by_data_lim(self, event):
-        #data = self.map.get_array()
+    def update_cbar_by_data_lim(self, event=None):
         self.map[self.ds_active].set_clim([self.data.min(), self.data.max()])
         self.fig.canvas.draw()
 

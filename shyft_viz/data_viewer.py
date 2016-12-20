@@ -117,8 +117,8 @@ class Viewer(object):
         plt_mode_label = list(self.plt_mode.keys())
         plt_mode_val = [self.plt_mode[k] for k in plt_mode_label]
         self.custom_plt = custom_plt # {'PTQ': {'subcat': ['temp', 'q_avg', 'prec'], 'subcat_obs': ['q_avg']}}
-        self.custom_plt_vars = {'PTQ': ['temp', 'q_avg', 'prec']}
-        self.custom_plt_types = list(self.custom_plt_vars.keys())
+        #self.custom_plt_vars = {'PTQ': ['temp', 'q_avg', 'prec']}
+        self.custom_plt_types = list(self.custom_plt.keys())
         self.custom_plt_active = self.custom_plt_types[0]
 
         self.data_lim_current = {nm: [0, 1] for nm in self.dist_vars}

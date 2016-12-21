@@ -365,7 +365,9 @@ class Viewer(object):
 
     def on_click(self, event):
         if event.inaxes is not self.ax_plt: return True
-        if self.plt_mode['Custom_Plot'] and self.ds_active not in self.custom_plt[self.custom_plt_active].keys(): return True
+        if self.plt_mode['Custom_Plot'] and self.ds_active not in self.custom_plt[self.custom_plt_active].keys():
+            print('here')
+            return True
         tb = self.fig.canvas.manager.toolbar
         if not self.plt_mode['Plot_Source'] and tb.mode == '':
             x = event.xdata

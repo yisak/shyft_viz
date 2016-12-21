@@ -9,13 +9,15 @@ class Geom(object):
 
 
 class SMGDataExtractor(object):
-    def __init__(self, shyft_data_ext, ref_repo):
+    def __init__(self, shyft_data_ext, ref_repo, ref_ts):
 
         self.var_units = shyft_data_ext.var_units
         self.t_ax = shyft_data_ext.t_ax
-        self.tsp = ref_repo[0]['repository'].read([ts_info['uid'] for ts_info in ref_repo[0]['1D_timeseries']],
-                                                  shyft_data_ext.t_ax.total_period())
-        self.catch_names, self.ts_uid = zip(*[(ts_info['module_name'],ts_info['uid']) for ts_info in ref_repo[0]['1D_timeseries']])
+        #self.tsp = ref_repo[0]['repository'].read([ts_info['uid'] for ts_info in ref_repo[0]['1D_timeseries']],
+        #                                          shyft_data_ext.t_ax.total_period())
+        self.tsp = ref_repo.read([ts_info['uid'] for ts_info in ref_ts], shyft_data_ext.t_ax.total_period())
+        #self.catch_names, self.ts_uid = zip(*[(ts_info['module_name'],ts_info['uid']) for ts_info in ref_repo[0]['1D_timeseries']])
+        self.catch_names, self.ts_uid = zip(*[(ts_info['module_name'], ts_info['uid']) for ts_info in ref_ts])
         shyft_catch_names = shyft_data_ext.catch_names
         idx = [shyft_catch_names.index(c) for c in self.catch_names]
         self.geom = Geom(shyft_data_ext.geom, idx)

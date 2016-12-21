@@ -34,7 +34,7 @@ class Region(object):
         self.rg_name = rg_name
         t_now = api.utctime_now()  # For usage with current date-time
         #t_now = utc.time(2016, 9, 3)  # For usage with any specified date-time
-        self.t = utc.trim(t_now, api.Calendar.DAY)
+        self.t = utc.trim(t_now, api.Calendar.HOUR)
         self.cfg_gen = cfg_gen
         shop_cfg = cfg_gen.MASTER_CFG.get(rg_name)
         self.region_model_id = '{}#ptgsk#1000m'.format(rg_name)
@@ -48,11 +48,11 @@ class Region(object):
         pass
 
     #def _get_viewer(self):
-    def view(self, t=None):
+    def view(self, t=None, plots={}):
         if t is not None:
             t_datetime = parse(t)
             t_num = utc.time(t_datetime.year, t_datetime.month, t_datetime.day, t_datetime.hour, t_datetime.minute, t_datetime.second)
-            self.t = utc.trim(t_num, api.Calendar.DAY)
+            self.t = utc.trim(t_num, api.Calendar.HOUR)
         if self.simulator is None:
             self.simulator = Simulator(self.cfg_gen, self.region_model_id)
             self.simulator.run_system(self.t, save_end_state=False, save_result_timeseries=False)
@@ -71,13 +71,16 @@ class Region(object):
                   'arome12-ec12': [rm_update, sim.region_model_arome12, sim.region_model_arome12_ec12],
                   'arome18-ec12': [rm_update, sim.region_model_arome18, sim.region_model_arome18_ec12]
                   }
-        rm_nm_arome00 = [nm for nm in rm_dct if 'arome00' in nm]
+        #rm_nm_arome00 = [nm for nm in rm_dct if 'arome00' in nm]
         module_data_ext = {k: DataExtractor(v, catch_select=self.subcat_ids_in_shop_module,
                                             catch_names=self.shop_module_names, agg=True) for k, v in rm_dct.items()}
         #smg_data_ext = SMGDataExtractor(module_data_ext, self.cfg.sim_config.get_reference_repo())
+        custom_plots = {'arome00-ec12_PTQ': {'arome00-ec12': ['temp', 'q_avg', 'prec']},
+                        'arome00,18-ec12,00_Q': {k: ['q_avg'] for k in ['arome00-ec12','arome18-ec12','arome00-ec00']}}
+        custom_plots.update(plots)
         return Viewer(module_data_ext,
-                      {'PTQ': {k: ['temp', 'q_avg', 'prec'] for k in rm_nm_arome00}},
+                      custom_plots,
                       time_marker=self.t, data_ext_pt=None, background=None, default_var='q_avg',
-                      default_ds='arome00-ec00')
+                      default_ds='arome00-ec12')
 
 models=Models()

@@ -231,7 +231,7 @@ class Viewer(object):
         self.update_cbar_by_data_lim()
 
     def OnCustomPltBtnClk(self, label):
-        self.custom_plt_type = label
+        self.custom_plt_active = label
 
     def OnPltModeBtnClk(self, label):
         self.plt_mode[label] = not self.plt_mode[label]
@@ -510,7 +510,7 @@ class TsPlot(object):
 
     def OnPltModeBtnClk(self, label):
         self.plt_mode[label] = not self.plt_mode[label]
-        print(label,self.plt_mode[label])
+        #print(label,self.plt_mode[label])
 
     def reset_plot(self):
         self.plotted_unit = []

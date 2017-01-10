@@ -48,7 +48,7 @@ class Region(object):
         pass
 
     #def _get_viewer(self):
-    def view(self, t=None, plots={}):
+    def view(self, t=None, plots={}, fetch_ref_data=False):
         if t is not None:
             t_datetime = parse(t)
             t_num = utc.time(t_datetime.year, t_datetime.month, t_datetime.day, t_datetime.hour, t_datetime.minute, t_datetime.second)
@@ -74,11 +74,13 @@ class Region(object):
         #rm_nm_arome00 = [nm for nm in rm_dct if 'arome00' in nm]
         module_data_ext = {k: DataExtractor(v, catch_select=self.subcat_ids_in_shop_module,
                                             catch_names=self.shop_module_names, agg=True) for k, v in rm_dct.items()}
-        smg_data_ext = {'Qobs_SMG': SMGDataExtractor(list(module_data_ext.values())[0], sim.reference_ts_repo, sim.reference_ts_spec)}
-        module_data_ext.update(smg_data_ext)
-        custom_plots = {'arome00-ec12_PTQ': {'arome00_ec12': ['temp', 'q_avg', 'prec'], 'Qobs_SMG': ['q_avg']},
+        custom_plots = {'arome00-ec12_PTQ': {'arome00_ec12': ['temp', 'q_avg', 'prec']},
                         'arome00,18-ec12,00_Q': {k: ['q_avg'] for k in ['arome00_ec12','arome18_ec12','arome00_ec00']}}
         custom_plots.update(plots)
+        if fetch_ref_data:
+            smg_data_ext = {'Qobs_SMG': SMGDataExtractor(list(module_data_ext.values())[0], sim.reference_ts_repo, sim.reference_ts_spec)}
+            module_data_ext.update(smg_data_ext)
+            [p.update({'Qobs_SMG': ['q_avg']}) for nm, p in custom_plots.items() if 'Q' in nm]
         return Viewer(module_data_ext,
                       custom_plots,
                       time_marker=self.t, data_ext_pt=None, background=None, default_var='q_avg',

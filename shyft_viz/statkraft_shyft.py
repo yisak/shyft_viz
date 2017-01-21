@@ -1,11 +1,9 @@
 import os
 import sys
-import yaml
 from dateutil.parser import *
 from shyft import api
 
-#sys.path.insert(0,os.path.join(os.getenv('SHYFTDATA', '.'), '..', 'shyft_config', 'orchestration'))
-sys.path.insert(0,'D:/users/ysa/shyft_config/orchestration')
+sys.path.insert(0,os.path.join(os.getenv('SHYFTDATA', '.'), '..', 'shyft_config', 'orchestration'))
 
 from statkraft_shyft_config import ConfigGenerator
 from statkraft_shyft_simulator import Simulator

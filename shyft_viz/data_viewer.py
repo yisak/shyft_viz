@@ -117,8 +117,8 @@ class Viewer(object):
         plt_mode_label = list(self.plt_mode.keys())
         plt_mode_val = [self.plt_mode[k] for k in plt_mode_label]
         self.custom_plt = custom_plt # {'PTQ': {'subcat': ['temp', 'q_avg', 'prec'], 'subcat_obs': ['q_avg']}}
-        self.custom_plt_vars = {'PTQ': ['temp', 'q_avg', 'prec']}
-        self.custom_plt_types = list(self.custom_plt_vars.keys())
+        #self.custom_plt_vars = {'PTQ': ['temp', 'q_avg', 'prec']}
+        self.custom_plt_types = list(self.custom_plt.keys())
         self.custom_plt_active = self.custom_plt_types[0]
 
         self.data_lim_current = {nm: [0, 1] for nm in self.dist_vars}
@@ -231,7 +231,7 @@ class Viewer(object):
         self.update_cbar_by_data_lim()
 
     def OnCustomPltBtnClk(self, label):
-        self.custom_plt_type = label
+        self.custom_plt_active = label
 
     def OnPltModeBtnClk(self, label):
         self.plt_mode[label] = not self.plt_mode[label]
@@ -365,7 +365,9 @@ class Viewer(object):
 
     def on_click(self, event):
         if event.inaxes is not self.ax_plt: return True
-        if self.plt_mode['Custom_Plot'] and self.ds_active not in self.custom_plt[self.custom_plt_active].keys(): return True
+        if self.plt_mode['Custom_Plot'] and self.ds_active not in self.custom_plt[self.custom_plt_active].keys():
+            print('here')
+            return True
         tb = self.fig.canvas.manager.toolbar
         if not self.plt_mode['Plot_Source'] and tb.mode == '':
             x = event.xdata
@@ -510,7 +512,7 @@ class TsPlot(object):
 
     def OnPltModeBtnClk(self, label):
         self.plt_mode[label] = not self.plt_mode[label]
-        print(label,self.plt_mode[label])
+        #print(label,self.plt_mode[label])
 
     def reset_plot(self):
         self.plotted_unit = []

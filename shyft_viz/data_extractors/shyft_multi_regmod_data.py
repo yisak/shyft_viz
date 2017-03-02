@@ -6,11 +6,12 @@ from .shyft_regmod_data import CellDataExtractor, SubcatDataExtractor
 
 
 class DataExtractor(object):
-    def __init__(self, rm_lst, agg = False, catch_select=None, clip=False, catch_names=None):
+    def __init__(self, rm_lst, agg = False, catch_select=None, clip=False, catch_names=None, geom=None):
         if agg:
-            self.cell_data_ext = [SubcatDataExtractor(rm, catch_select=catch_select, clip=clip, catch_names=catch_names) for rm in rm_lst]
+            self.cell_data_ext = [SubcatDataExtractor(rm, catch_select=catch_select, clip=clip, catch_names=catch_names, geom=geom)
+                                  for rm in rm_lst]
         else:
-            self.cell_data_ext = [CellDataExtractor(rm, catch_select=catch_select, clip=clip, catch_names=catch_names)
+            self.cell_data_ext = [CellDataExtractor(rm, catch_select=catch_select, clip=clip, catch_names=catch_names, geom=geom)
                                   for rm in rm_lst]
         self.ts_fetching_lst = self.cell_data_ext[0].ts_fetching_lst
         self.map_fetching_lst = self.cell_data_ext[0].map_fetching_lst

@@ -63,7 +63,7 @@ class ArealDataExtractor(object):
 
 
 class CellDataExtractor(ArealDataExtractor):
-    def __init__(self, rm, catch_select=None, clip=False, catch_names=None):
+    def __init__(self, rm, catch_select=None, clip=False, catch_names=None, geom=None):
         super().__init__(rm)
 
         self.responses = {'ptgsk':
@@ -84,8 +84,10 @@ class CellDataExtractor(ArealDataExtractor):
                        'pthsk':
                            {'q_inst': 'kirchner_discharge', 'swe': 'snow_swe', 'sca':'snow_sca'}
                        }
-        self.geom = CellViewerPrep(self.cid, self.rm.gis_info, self.rm.catchment_id_map,
-                                   self.rm.bounding_region.geometry, catch_select=catch_select, clip=clip)
+        self.geom = geom
+        if geom is None:
+            self.geom = CellViewerPrep(self.cid, self.rm.gis_info, self.rm.catchment_id_map,
+                                       self.rm.bounding_region.geometry, catch_select=catch_select, clip=clip)
         self.ts_fetching_lst = self.geom.ts_fetching_lst
         self.map_fetching_lst = self.geom.map_fetching_lst
         if catch_names is None:
@@ -116,11 +118,12 @@ class CellDataExtractor(ArealDataExtractor):
 
 
 class SubcatDataExtractor(ArealDataExtractor):
-    def __init__(self, rm, catch_select=None, clip=False, catch_names=None):
+    def __init__(self, rm, catch_select=None, clip=False, catch_names=None, geom=None):
         super().__init__(rm)
-
-        self.geom = SubcatViewerPrep(self.cid, self.rm.gis_info, self.rm.catchment_id_map,
-                                     self.rm.bounding_region.geometry, catch_grp=catch_select, clip=clip)
+        self.geom = geom
+        if geom is None:
+            self.geom = SubcatViewerPrep(self.cid, self.rm.gis_info, self.rm.catchment_id_map,
+                                         self.rm.bounding_region.geometry, catch_grp=catch_select, clip=clip)
         self.ts_fetching_lst = self.geom.ts_fetching_lst
         self.map_fetching_lst = self.geom.map_fetching_lst
         if catch_names is None:

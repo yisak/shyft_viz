@@ -480,6 +480,7 @@ class TsPlot(object):
         self.axes = None
         self.reset_plot()
         self.colors = ('Green', 'Red', 'Blue', 'Cyan') # colors = cycle(matplotlib.rcParams['axes.color_cycle']) # plt.rcParams['axes.color_cycle']
+        self.colors_ = cycle(['Red', 'Blue', 'Cyan'])
         #colors = ('b', 'g', 'r', 'c', 'm', 'y', 'k')
         #self.line_styles = [cycle(['-', '--', '-.', ':', '.', ',', 'o', 'v', '^', '<', '>',
         #                         '1', '2', '3', '4', 's', 'p', '*', 'h', 'H', '+', 'x', 'D', 'd', '|', '_']) for _ in range(4)]
@@ -537,8 +538,8 @@ class TsPlot(object):
         #self.subplot_autofmt_xdate(self.fig.axes[-1])
         # self.subplot_autofmt_xdate(self.ax) # for multiple subplots
         self.fig.autofmt_xdate()  # for one subplot
-        timeFmt = mdates.DateFormatter('%d.%m %H:%M')
-        self.ax.xaxis.set_major_formatter(timeFmt)
+        #timeFmt = mdates.DateFormatter('%d.%m %H:%M')
+        #self.ax.xaxis.set_major_formatter(timeFmt)
         self.ax.xaxis_date()
         self.add_plot(t, v, labels, units, prop)
         #self.multi = MultiCursor(self.fig.canvas, self.ax, color='r', lw=1)
@@ -554,7 +555,7 @@ class TsPlot(object):
                 if (len(self.plotted_unit) == 0):
                     self.axes.append(self.ax)
                     #self.lines.append(self.axes[0].plot(t, v[k], ls=next(self.line_styles[0]), color=self.colors[0], label=labels[k], marker=marker, ms=8, markevery=None)[0])
-                    l_prop = dict(ls='-', color=self.colors[0], label=labels[k], marker=next(self.markers[0]), ms=8, mec=self.colors[0], markevery=None)
+                    l_prop = dict(ls='-', color=self.colors[0], label=labels[k], marker=next(self.markers[0]), ms=4, mec=self.colors[0], markevery=7)
                     l_prop.update(prop[k])
                     self.lines.append(self.plot(self.axes[0],t, v[k], l_prop))
                     #self.lines.append(self.axes[0].plot(t, v[k], ls=ls, color=self.colors[0], label=labels[k], marker=next(self.markers[0]), ms=8, markevery=None, drawstyle='steps')[0])
@@ -568,8 +569,11 @@ class TsPlot(object):
                     if (units[k] in self.plotted_unit):
                         idx=self.plotted_unit.index(units[k])
                         color = self.colors[idx]
+                        color = next(self.colors_)
+                        marker = next(self.markers[idx])
+                        marker = None
                         #self.lines.append(self.axes[idx].plot(t, v[k], ls=next(self.line_styles[idx]), color=color, label=labels[k], marker=marker, ms=8, markevery=None)[0])
-                        l_prop = dict(ls='-', color=color, label=labels[k], marker=next(self.markers[idx]), ms=8, mec=color, markevery=None)
+                        l_prop = dict(ls='-', color=color, label=labels[k], marker=marker, ms=4, mec=color, markevery=7)
                         l_prop.update(prop[k])
                         self.lines.append(self.plot(self.axes[idx], t, v[k], l_prop))
                         #self.lines.append(self.axes[idx].plot(t, v[k], ls=ls, color=color, label=labels[k], marker=next(self.markers[0]), ms=8, markevery=None)[0])
@@ -581,7 +585,7 @@ class TsPlot(object):
                         color = self.colors[idx]
                         self.axes.append(self.axes[0].twinx())
                         #self.lines.append(self.axes[-1].plot(t, v[k], ls=next(self.line_styles[idx]), color=color, label=labels[k], marker=marker, ms=8, markevery=None)[0])
-                        l_prop = dict(ls='-', color=color, label=labels[k], marker=next(self.markers[idx]), ms=8, mec=color, markevery=None)
+                        l_prop = dict(ls='-', color=color, label=labels[k], marker=next(self.markers[idx]), ms=4, mec=color, markevery=7)
                         l_prop.update(prop[k])
                         self.lines.append(self.plot(self.axes[-1], t, v[k], l_prop))
                         #self.lines.append(self.axes[-1].plot(t, v[k], ls=ls, color=color, label=labels[k], marker=next(self.markers[0]), ms=8, markevery=None)[0])

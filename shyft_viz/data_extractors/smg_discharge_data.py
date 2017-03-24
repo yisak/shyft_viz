@@ -18,8 +18,8 @@ class SMGDataExtractor(object):
         shyft_catch_names = shyft_data_ext.catch_names
         idx = [shyft_catch_names.index(c) for c in self.catch_names]
         self.geom = Geom(shyft_data_ext.geom, idx)
-        self.map_fetching_lst = [0]
-        self.ts_fetching_lst = [0]
+        self.map_fetching_lst = list(range(len(self.catch_names)))
+        self.ts_fetching_lst = list(range(len(self.catch_names)))
         self.data = {'q_avg':np.array([self.tsp[uid].v.to_numpy() for uid in self.ts_uid])}
 
     def get_map(self, var_name, cat_id_lst_grp, t):

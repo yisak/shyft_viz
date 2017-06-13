@@ -479,9 +479,9 @@ class TsPlot(object):
         self.plotted_unit = None
         self.axes = None
         self.reset_plot()
-        self.colors = ('Green', 'Red', 'Blue', 'Cyan') # colors = cycle(matplotlib.rcParams['axes.color_cycle']) # plt.rcParams['axes.color_cycle']
+        #self.colors = ('Green', 'Red', 'Blue', 'Cyan') # colors = cycle(matplotlib.rcParams['axes.color_cycle']) # plt.rcParams['axes.color_cycle']
         self.colors_ = cycle(['Red', 'Blue', 'Cyan'])
-        #colors = ('b', 'g', 'r', 'c', 'm', 'y', 'k')
+        self.colors = cycle(['b', 'g', 'r', 'k', 'm', 'y', 'c'])
         #self.line_styles = [cycle(['-', '--', '-.', ':', '.', ',', 'o', 'v', '^', '<', '>',
         #                         '1', '2', '3', '4', 's', 'p', '*', 'h', 'H', '+', 'x', 'D', 'd', '|', '_']) for _ in range(4)]
         self.line_styles = [cycle(['-', '--', '-.', ':']) for _ in range(4)]
@@ -554,23 +554,25 @@ class TsPlot(object):
             if (not np.all(np.isnan(v[k]))):
                 if (len(self.plotted_unit) == 0):
                     self.axes.append(self.ax)
+                    color = next(self.colors)
                     #self.lines.append(self.axes[0].plot(t, v[k], ls=next(self.line_styles[0]), color=self.colors[0], label=labels[k], marker=marker, ms=8, markevery=None)[0])
-                    l_prop = dict(ls='-', color=self.colors[0], label=labels[k], marker=next(self.markers[0]), ms=4, mec=self.colors[0], markevery=7)
+                    l_prop = dict(ls='-', color=color, label=labels[k], marker=next(self.markers[0]), ms=4, mec=color, markevery=7)
                     l_prop.update(prop[k])
                     self.lines.append(self.plot(self.axes[0],t, v[k], l_prop))
                     #self.lines.append(self.axes[0].plot(t, v[k], ls=ls, color=self.colors[0], label=labels[k], marker=next(self.markers[0]), ms=8, markevery=None, drawstyle='steps')[0])
 
                     self.plotted_unit.append(units[k])
-                    self.axes[0].set_ylabel(units[k],color=self.colors[0])
-                    self.axes[0].tick_params(axis='y', colors=self.colors[0])
+                    self.axes[0].set_ylabel(units[k],color=color)
+                    self.axes[0].tick_params(axis='y', colors=color)
                     if self.time_marker is not None:
                         self.axes[0].axvline(x=self.time_marker, lw=2, color='k', ls='-')
                 else:
                     if (units[k] in self.plotted_unit):
                         idx=self.plotted_unit.index(units[k])
-                        color = self.colors[idx]
-                        color = next(self.colors_)
-                        marker = next(self.markers[idx])
+                        #color = self.colors[idx]
+                        color = next(self.colors)
+                        #color = next(self.colors_)
+                        #marker = next(self.markers[idx])
                         marker = None
                         #self.lines.append(self.axes[idx].plot(t, v[k], ls=next(self.line_styles[idx]), color=color, label=labels[k], marker=marker, ms=8, markevery=None)[0])
                         l_prop = dict(ls='-', color=color, label=labels[k], marker=marker, ms=4, mec=color, markevery=7)
@@ -582,7 +584,8 @@ class TsPlot(object):
                     else:
                         self.plotted_unit.append(units[k])
                         idx = self.plotted_unit.index(units[k])
-                        color = self.colors[idx]
+                        #color = self.colors[idx]
+                        color = next(self.colors)
                         self.axes.append(self.axes[0].twinx())
                         #self.lines.append(self.axes[-1].plot(t, v[k], ls=next(self.line_styles[idx]), color=color, label=labels[k], marker=marker, ms=8, markevery=None)[0])
                         l_prop = dict(ls='-', color=color, label=labels[k], marker=next(self.markers[idx]), ms=4, mec=color, markevery=7)

@@ -9,6 +9,7 @@ from statkraft_shyft_config import ConfigGenerator
 from statkraft_shyft_simulator import Simulator
 
 from .data_extractors.shyft_multi_regmod_data import DataExtractor
+from .data_extractors.shyft_regmod_data import SubcatDataExtractor
 from .data_extractors.smg_discharge_data import SMGDataExtractor
 from .data_viewer import Viewer
 
@@ -70,8 +71,10 @@ class Region(object):
                   'arome18_ec12': [rm_update, sim.region_model_arome18, sim.region_model_arome18_ec12]
                   }
         #rm_nm_arome00 = [nm for nm in rm_dct if 'arome00' in nm]
+        geom = SubcatDataExtractor(rm_update, catch_select=self.subcat_ids_in_shop_module,
+                                   catch_names=self.shop_module_names).geom
         module_data_ext = {k: DataExtractor(v, catch_select=self.subcat_ids_in_shop_module,
-                                            catch_names=self.shop_module_names, agg=True) for k, v in rm_dct.items()}
+                                            catch_names=self.shop_module_names, geom=geom, agg=True) for k, v in rm_dct.items()}
         custom_plots = {'arome00-ec12_PTQ': {'arome00_ec12': ['temp', 'q_avg', 'prec']},
                         'arome00,18-ec12,00_Q': {k: ['q_avg'] for k in ['arome00_ec12','arome18_ec12','arome00_ec00']}}
         custom_plots.update(plots)

@@ -10,38 +10,12 @@ from shapely.geometry import Point
 from datetime import datetime
 from itertools import cycle
 plt.style.use('ggplot')
-'''
-['fivethirtyeight',
- 'dark_background',
- 'seaborn-dark',
- 'seaborn-colorblind',
- 'seaborn-dark-palette',
- 'seaborn-notebook',
- 'seaborn-ticks',
- 'seaborn-deep',
- 'grayscale',
- 'seaborn-poster',
- 'seaborn-talk',
- 'seaborn-darkgrid',
- 'seaborn-bright',
- 'seaborn-pastel',
- 'bmh',
- 'seaborn-white',
- 'ggplot',
- 'seaborn-whitegrid',
- 'seaborn-paper',
- 'seaborn-muted',
- 'classic']
-'''
+
 
 def plot_background(ax, f_path):
     from osgeo import gdal
     gdal.UseExceptions()
-
-    # ds = gdal.Open('G:/Work/ENKI/NVE_Atlas/Vinjevatn_background_3.tiff')
     ds = gdal.Open(f_path)
-    # band = ds.GetRasterBand(1)
-    # elevation = band.ReadAsArray()
     elevation = ds.ReadAsArray()  # all bands
 
     nrows, ncols = elevation[0].shape
@@ -245,21 +219,18 @@ class Viewer(object):
         self.fig.canvas.draw()
 
     def add_radio_button(self, but_ax, title, labels, func):
-        axcolor = 'lightgoldenrodyellow'
         but_ax.set_title(title)
         radio_but = RadioButtons(but_ax, labels)
         radio_but.on_clicked(func)
         return radio_but
 
     def add_check_button(self, but_ax1, title, labels, vals, func):
-        axcolor = 'lightgoldenrodyellow'
         but_ax1.set_title(title)
         check = CheckButtons(but_ax1, labels, vals)
         check.on_clicked(func)
         return check
 
     def add_data_lim_sliders(self, axmin, axmax):
-        axcolor = 'lightgoldenrodyellow'
         self.slidermin = Slider(axmin, 'Min', 0., 1., valinit=self.data_lim_current[self.dist_var][0])
         self.slidermax = Slider(axmax, 'Max', 0., 1., valinit=self.data_lim_current[self.dist_var][1])
         self.slidermin.valtext.set_text(self.scale_data_lim(self.slidermin.val))
@@ -281,7 +252,6 @@ class Viewer(object):
         return self.data_lim[self.dist_var][0] + val * (self.data_lim[self.dist_var][1] - self.data_lim[self.dist_var][0])
 
     def add_time_slider(self, ax_slider):
-        axcolor = 'lightgoldenrodyellow'
         self.time_slider = Slider(ax_slider, 'Time', self.t_ax.start,
                                   self.t_ax.start + self.t_ax.delta_t * (self.t_ax.size() - 1),
                                   valinit=self.t_ax.start)
@@ -292,7 +262,7 @@ class Viewer(object):
     def update_time(self,val):
         t_indx = self.t_ax.index_of(int(self.time_slider.val))
         #self.ti = t_indx
-        #self.update_plot() # will hnag if slider dragged too fast
+        #self.update_plot() # will hang if slider dragged too fast
         self.time_slider.valtext.set_text(self.data_ext[self.ds_active].time_num_2_str(t_indx))
 
     def add_media_button(self, ax_navigate):
@@ -479,11 +449,7 @@ class TsPlot(object):
         self.plotted_unit = None
         self.axes = None
         self.reset_plot()
-        #self.colors = ('Green', 'Red', 'Blue', 'Cyan') # colors = cycle(matplotlib.rcParams['axes.color_cycle']) # plt.rcParams['axes.color_cycle']
-        self.colors_ = cycle(['Red', 'Blue', 'Cyan'])
         self.colors = cycle(['b', 'g', 'r', 'k', 'm', 'y', 'c'])
-        #self.line_styles = [cycle(['-', '--', '-.', ':', '.', ',', 'o', 'v', '^', '<', '>',
-        #                         '1', '2', '3', '4', 's', 'p', '*', 'h', 'H', '+', 'x', 'D', 'd', '|', '_']) for _ in range(4)]
         self.line_styles = [cycle(['-', '--', '-.', ':']) for _ in range(4)]
         # Filter out filled markers and marker settings that do nothing.
         # We use iteritems from six to make sure that we get an iterator
@@ -524,15 +490,11 @@ class TsPlot(object):
 
 
     def init_plot(self, t, v, labels, units, prop):
-        #self.fig, self.ax = plt.subplots()
         self.fig = plt.figure(figsize=(15, 6))#, (15, 6))  # , facecolor='white')
         self.ax = self.fig.add_subplot(self.gs[0, 1])
         ax_options_1 = self.fig.add_subplot(self.gs[0, 0])
         self.option_btn = self.add_check_button(ax_options_1, 'Options', list(self.plt_mode.keys()),
                                                 list(self.plt_mode.values()), self.OnPltModeBtnClk)
-        #self.ax = host_subplot(111)
-
-        #self.fig.subplots_adjust(hspace=0.1, bottom=0.2)
         self.fig.canvas.mpl_connect('close_event', self.handle_close)
         #plt.setp([a.get_xticklabels() for a in self.fig.axes[:-1]], visible=False)
         #self.subplot_autofmt_xdate(self.fig.axes[-1])
@@ -616,10 +578,7 @@ class TsPlot(object):
                             self.axes[-1].patch.set_visible(False)
 
                 # self.axes[i][0].legend()
-
                 #self.subplot_autofmt_xdate(self.ax)
-
-
                 self.show_legend(0)
                 self.fig.canvas.draw()
 

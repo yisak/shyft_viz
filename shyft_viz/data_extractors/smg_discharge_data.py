@@ -11,7 +11,7 @@ class Geom(object):
 class SMGDataExtractor(object):
     def __init__(self, shyft_data_ext, ref_repo, ref_ts):
 
-        self.var_units = shyft_data_ext.var_units
+        self.var_units = {'q_avg': 'm3_per_sec'} # shyft_data_ext.var_units
         self.t_ax = shyft_data_ext.t_ax
         self.tsp = ref_repo.read([ts_info['uid'] for ts_info in ref_ts], shyft_data_ext.t_ax.total_period())
         self.catch_names, self.ts_uid = zip(*[(ts_info['module_name'], ts_info['uid']) for ts_info in ref_ts])

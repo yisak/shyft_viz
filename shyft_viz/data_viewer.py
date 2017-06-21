@@ -187,22 +187,32 @@ class Viewer(object):
         self.fig.canvas.draw()
 
     def OnDatasetSelect(self, label):
-        self.map[self.ds_active].set_visible(False)
-        self.map[label].set_visible(True)
-        self.ds_active = label
-        self.data = self.map[self.ds_active].get_array()
-        self.fig.canvas.draw()
+        #dist_var = self.dist_var_sel_btn.value_selected
+        if self.dist_var_sel_btn.value_selected not in self.var_units[label]:
+            print("Dataset '{}' does not contain Variable '{}'".format(label, self.dist_var_sel_btn.value_selected))
+            self.dataset_sel_btn.set_active(self.ds_names.index(self.ds_active))
+        else:
+            self.map[self.ds_active].set_visible(False)
+            self.map[label].set_visible(True)
+            self.ds_active = label
+            self.OnDistVarBtnClk(self.dist_var_sel_btn.value_selected)
+            #self.data = self.map[self.ds_active].get_array()
+            self.fig.canvas.draw()
 
     def OnDistVarBtnClk(self, label):
-        self.ax_plt.set_title(self.ax_plt.get_title().replace(self.dist_var, label), fontsize=12)
-        self.dist_var = label
-        print(self.dist_var)
-        if self.dist_var in self.geo_data:
-            self.data = self.data_ext[self.ds_active].get_geo_data(self.dist_var, self.map_fetching_lst[self.ds_active])
+        if label not in self.var_units[self.ds_active]:
+            print("Dataset '{}' does not contain Variable '{}'".format(self.ds_active,label))
+            self.dist_var_sel_btn.set_active(self.dist_vars.index(self.dist_var))
         else:
-            self.data = self.data_ext[self.ds_active].get_map(self.dist_var, self.map_fetching_lst[self.ds_active], self.ti)
-        self.map[self.ds_active].set_array(self.data)
-        self.update_cbar_by_data_lim()
+            self.ax_plt.set_title(self.ax_plt.get_title().replace(self.dist_var, label), fontsize=12)
+            self.dist_var = label
+            print(self.dist_var)
+            if self.dist_var in self.geo_data:
+                self.data = self.data_ext[self.ds_active].get_geo_data(self.dist_var, self.map_fetching_lst[self.ds_active])
+            else:
+                self.data = self.data_ext[self.ds_active].get_map(self.dist_var, self.map_fetching_lst[self.ds_active], self.ti)
+            self.map[self.ds_active].set_array(self.data)
+            self.update_cbar_by_data_lim()
 
     def OnCustomPltBtnClk(self, label):
         self.custom_plt_active = label

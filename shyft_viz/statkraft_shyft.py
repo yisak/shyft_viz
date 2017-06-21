@@ -3,7 +3,7 @@ import sys
 from dateutil.parser import *
 from shyft import api
 
-sys.path.insert(0,os.path.join(os.getenv('SHYFTDATA', '.'), '..', 'shyft_config', 'orchestration'))
+#sys.path.insert(0,os.path.join(os.getenv('SHYFTDATA', '.'), '..', 'shyft_config', 'orchestration'))
 
 from statkraft_shyft_config import ConfigGenerator
 from statkraft_shyft_simulator import Simulator
@@ -30,39 +30,38 @@ class Models(object):
 
 class Region(object):
     def __init__(self, rg_name, cfg_gen):
-        self.rg_name = rg_name
-        t_now = api.utctime_now()  # For usage with current date-time
-        #t_now = utc.time(2016, 9, 3)  # For usage with any specified date-time
-        self.t = utc.trim(t_now, api.Calendar.HOUR)
         self.cfg_gen = cfg_gen
-        shop_cfg = cfg_gen.MASTER_CFG.get(rg_name)
         self.region_model_id = '{}#ptgsk#1000m'.format(rg_name)
         self.simulator = None
-        self.shop_module_names, self.subcat_ids_in_shop_module = zip(*[(m['module_name'],[c['subcat_id'] for c in m['subcats_in_module']]) for m in shop_cfg if m['module_group']=='SHOP'])
 
-    def _get_config(self):
-        pass
+    @property
+    def shop_module_info(self):
+        shop_cfg = self.cfg_gen.MASTER_CFG.get(self.region_model_id.split('#')[0])
+        return [{'name':m['module_name'], 'subcat_ids':[c['subcat_id'] for c in m['subcats_in_module']]} for m in shop_cfg if
+              m['module_group'] == 'SHOP']
 
-    def _get_simulator(self):
-        pass
-
-    #def _get_viewer(self):
-    def view(self, t=None, plots={}, fetch_ref_data=True, mode='forecast'):
+    def view(self, t=None, plots={}, fetch_ref_data=True, arome_delay=api.deltahours(3), ec_delay=api.deltahours(8),
+             mode='forecast'):
+        if mode not in ['historical', 'forecast']:
+            print("kwarg 'mode' should be either 'forecast' or 'historical'!")
+            return
         if t is not None:
             t_datetime = parse(t)
-            t_num = utc.time(t_datetime.year, t_datetime.month, t_datetime.day, t_datetime.hour, t_datetime.minute, t_datetime.second)
-            self.t = utc.trim(t_num, api.Calendar.HOUR)
+            t_start = utc.time(t_datetime.year, t_datetime.month, t_datetime.day, t_datetime.hour, t_datetime.minute, t_datetime.second)
+        else:
+            t_start = api.utctime_now()
         if self.simulator is None:
             self.simulator = Simulator(self.cfg_gen, self.region_model_id)
-            self.simulator.run_system(self.t, save_end_state=False, save_result_timeseries=False)
         else:
-            if t is not None:
+            if self.simulator.region_model_id != self.region_model_id:
                 self.simulator = Simulator(self.cfg_gen, self.region_model_id)
-                self.simulator.run_system(self.t, save_end_state=False, save_result_timeseries=False)
+        self.simulator.run_system(t_start, save_end_state=False, save_result_timeseries=False,
+                                  update_state=True, arome_fc_delay=arome_delay, ec_fc_delay=ec_delay)
         sim = self.simulator
         rm_update = sim.region_model_update
-        geom = SubcatDataExtractor(rm_update, catch_select=self.subcat_ids_in_shop_module,
-                                   catch_names=self.shop_module_names).geom
+        shop_module_names, subcat_ids_in_shop_module = zip(*[(m['name'],m['subcat_ids']) for m in self.shop_module_info])
+        geom = SubcatDataExtractor(rm_update, catch_select=subcat_ids_in_shop_module,
+                                   catch_names=shop_module_names).geom
         if mode == 'forecast':
             rm_dct = {'arome00_ec00': [rm_update, sim.region_model_arome00, sim.region_model_arome00_ec00],
                       'arome06_ec00': [rm_update, sim.region_model_arome06, sim.region_model_arome06_ec00],
@@ -73,21 +72,18 @@ class Region(object):
                       'arome12_ec12': [rm_update, sim.region_model_arome12, sim.region_model_arome12_ec12],
                       'arome18_ec12': [rm_update, sim.region_model_arome18, sim.region_model_arome18_ec12]
                       }
-            #rm_nm_arome00 = [nm for nm in rm_dct if 'arome00' in nm]
             custom_plots = {'arome00-ec12_PTQ': {'arome00_ec12': ['temp', 'q_avg', 'prec']},
                             'arome00,18-ec12,00_Q': {k: ['q_avg'] for k in
                                                      ['arome00_ec12', 'arome18_ec12', 'arome00_ec00']}}
 
-            module_data_ext = {k: DataExtractor(v, catch_select=self.subcat_ids_in_shop_module,
-                                                catch_names=self.shop_module_names, geom=geom, agg=True) for k, v in rm_dct.items()}
+            module_data_ext = {k: DataExtractor(v, catch_select=subcat_ids_in_shop_module,
+                                                catch_names=shop_module_names, geom=geom, agg=True) for k, v in rm_dct.items()}
             default_ds = 'arome00_ec12'
-            time_marker = self.t
+            time_marker = t_start
         if mode == 'historical':
             rm_preupdate = sim.region_model_preupdate
-            rm_dct = {'arome_concat': rm_update}
-            # rm_nm_arome00 = [nm for nm in rm_dct if 'arome00' in nm]
-            module_data_ext = {'arome_concat': SubcatDataExtractor(rm_preupdate, catch_select=self.subcat_ids_in_shop_module,
-                                                      catch_names=self.shop_module_names)}
+            module_data_ext = {'arome_concat': SubcatDataExtractor(rm_preupdate, catch_select=subcat_ids_in_shop_module,
+                                                      catch_names=shop_module_names)}
             custom_plots = {'arome_concat_PTQ': {'arome_concat': ['temp', 'q_avg', 'prec']},
                             'QsimVSQobs': {k: ['q_avg'] for k in ['arome_concat']}}
             default_ds = 'arome_concat'

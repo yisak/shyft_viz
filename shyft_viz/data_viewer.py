@@ -154,7 +154,7 @@ class Viewer(object):
         ax_navigate = {nm: self.fig.add_subplot(gs_navigate[0, i]) for i, nm in enumerate(['Prev', 'Play', 'Pause', 'Next', 'Update'])}
 
         if background is not None:
-            plot_background(self.ax_plt, 'G:/Work/shyft/background_img'+'/' +background+'.tiff')
+            plot_background(self.ax_plt, background)
 
         self.add_plot()
         self.set_labels()

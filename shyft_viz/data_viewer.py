@@ -306,31 +306,42 @@ class Viewer(object):
         return info
 
     def OnNext(self, *args):
-        self.ti += 1
-        if (self.ti > self.max_ti): self.ti = 0
-        # if(self.ti<0):self.ti=self.max_ti
-        self.update_plot()
+        if not self._is_var_static(self.dist_var):
+            self.ti += 1
+            if (self.ti > self.max_ti): self.ti = 0
+            # if(self.ti<0):self.ti=self.max_ti
+            self.update_plot()
 
     def OnPrev(self, *args):
-        self.ti -= 1
-        # if(self.ti>self.max_ti):self.ti=0
-        if (self.ti < 0): self.ti = self.max_ti
-        self.update_plot()
+        if not self._is_var_static(self.dist_var):
+            self.ti -= 1
+            # if(self.ti>self.max_ti):self.ti=0
+            if (self.ti < 0): self.ti = self.max_ti
+            self.update_plot()
 
     def OnPlay(self, event):
-        # self.ani = animation.FuncAnimation(self.fig, self.OnNext,blit=False, interval=10,repeat=False)
-        # self.fig.canvas.manager.window.after(100, self.OnNext)
-        self.timer.add_callback(self.OnNext)  # , selfax)
-        self.timer.start()
+        if not self._is_var_static(self.dist_var):
+            # self.ani = animation.FuncAnimation(self.fig, self.OnNext,blit=False, interval=10,repeat=False)
+            # self.fig.canvas.manager.window.after(100, self.OnNext)
+            self.timer.add_callback(self.OnNext)  # , selfax)
+            self.timer.start()
 
     def OnPause(self, event):
         self.timer.remove_callback(self.OnNext)
 
     def OnUpdate(self, event):
-        t_indx = self.t_ax.index_of(int(self.time_slider.val))
-        if self.ti != t_indx:
-            self.ti = t_indx
-            self.update_plot()
+        if not self._is_var_static(self.dist_var):
+            t_indx = self.t_ax.index_of(int(self.time_slider.val))
+            if self.ti != t_indx:
+                self.ti = t_indx
+                self.update_plot()
+
+    def _is_var_static(self,var_name):
+        if var_name in self.geo_data:
+            print("Variable '{}' has no time dimension!".format(var_name))
+            return True
+        else:
+            return False
 
     def update_plot(self):
         self.data = self.data_ext[self.ds_active].get_map(self.dist_var, self.map_fetching_lst[self.ds_active], self.ti)
@@ -346,7 +357,7 @@ class Viewer(object):
     def on_click(self, event):
         if event.inaxes is not self.ax_plt: return True
         if self.plt_mode['Custom_Plot'] and self.ds_active not in self.custom_plt[self.custom_plt_active].keys():
-            print('here')
+            #print('here')
             return True
         tb = self.fig.canvas.manager.toolbar
         if not self.plt_mode['Plot_Source'] and tb.mode == '':
@@ -371,8 +382,11 @@ class Viewer(object):
                                     for ds_active in valid_ds for dist_var in dist_vars [ds_active]]
                     #print(unique_names)
                 else:
-                    valid_ds = [self.ds_active]
-                    dist_vars = {self.ds_active: [self.dist_var]}
+                    if not self._is_var_static(self.dist_var):
+                        valid_ds = [self.ds_active]
+                        dist_vars = {self.ds_active: [self.dist_var]}
+                    else:
+                        return True
 
                 props = [{} for _ in unique_names]
                 found_prec = ['prec' in nm for nm in unique_names]

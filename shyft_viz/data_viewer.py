@@ -206,7 +206,7 @@ class Viewer(object):
         else:
             self.ax_plt.set_title(self.ax_plt.get_title().replace(self.dist_var, label), fontsize=12)
             self.dist_var = label
-            print(self.dist_var)
+            #print(self.dist_var)
             if self.dist_var in self.geo_data:
                 self.data = self.data_ext[self.ds_active].get_geo_data(self.dist_var, self.map_fetching_lst[self.ds_active])
             else:

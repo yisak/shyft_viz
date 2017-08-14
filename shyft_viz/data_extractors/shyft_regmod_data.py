@@ -59,11 +59,14 @@ class ArealDataExtractor(object):
         self._ts_map_ext_methods.update({k: getattr(getattr(self.rm, output_grp), v) for output_grp in self.outputs[self.stack_nm]
                                          for k, v in self.outputs[self.stack_nm][output_grp].items()})
 
-    def time_num_2_str(self, t):
-        return self.cal.to_string(self.t_ax_shyft.time(self._time_num_2_idx(t)))
+    def time_num_2_str(self, t_num):
+        return self.cal.to_string(self.get_closest_time(t_num))
 
-    def _time_num_2_idx(self, t):
-        return self.t_ax_shyft.index_of(t)
+    def _time_num_2_idx(self, t_num):
+        return self.t_ax_shyft.index_of(t_num)
+
+    def get_closest_time(self, t_num):
+        return self.t_ax_shyft.time(self._time_num_2_idx(t_num))
 
 
 class CellDataExtractor(ArealDataExtractor):

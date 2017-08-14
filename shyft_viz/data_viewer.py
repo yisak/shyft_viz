@@ -8,8 +8,12 @@ from matplotlib.lines import Line2D
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from shapely.geometry import Point
 from datetime import datetime
+from pytz import utc
 from itertools import cycle
 plt.style.use('ggplot')
+
+def utctimestamp_2_datetime(utc_lst):
+    return [datetime.utcfromtimestamp(t_num).replace(tzinfo=utc) for t_num in utc_lst]
 
 
 def plot_background(ax, f_path):
@@ -410,7 +414,7 @@ class Viewer(object):
                     *[self.data_ext[ds_active].get_ts(dist_var, self.ts_fetching_lst[ds_active][catchind[ds_active]])
                                        for ds_active in valid_ds for dist_var in dist_vars[ds_active]])
 
-                tsplot.init_plot(ts_t, ts_v,
+                tsplot.init_plot(list(ts_t), ts_v,
                                  unique_names, # [dist_var + '_' + self.catch_nms[self.ds_active][catchind] for dist_var in dist_vars],
                                  [self.var_units[ds_active][dist_var] for ds_active in valid_ds for dist_var in dist_vars[ds_active]], props)
                 tsplot.unique_ts_names.extend(unique_names)
@@ -554,6 +558,8 @@ class TsPlot(object):
     def add_plot(self, t, v, labels, units, prop):
         for k in range(len(v)):
             if (not np.all(np.isnan(v[k]))):
+                if not isinstance(t[k][0], datetime):
+                    t[k] = utctimestamp_2_datetime(t[k])
                 if (len(self.plotted_unit) == 0):
                     self.axes.append(self.ax)
                     color = next(self.colors)

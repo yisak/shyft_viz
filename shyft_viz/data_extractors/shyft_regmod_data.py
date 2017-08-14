@@ -12,7 +12,8 @@ class ArealDataExtractor(object):
         self.stack_nm = stack_names[rm.__class__.__name__]
         self.cells = rm.cells
         self.cal = api.Calendar()
-        self.t_ax = self.rm.time_axis
+        self.t_ax_shyft = self.rm.time_axis
+        self.t_ax = np.array([self.t_ax_shyft.time(i) for i in range(self.t_ax_shyft.size())])
         self.inputs = {'prec': 'precipitation', 'temp': 'temperature', 'ws': 'wind_speed', 'rh': 'rel_hum',
                        'rad': 'radiation'}
         self.basic_outputs = {'q_avg': 'discharge'}
@@ -58,8 +59,11 @@ class ArealDataExtractor(object):
         self._ts_map_ext_methods.update({k: getattr(getattr(self.rm, output_grp), v) for output_grp in self.outputs[self.stack_nm]
                                          for k, v in self.outputs[self.stack_nm][output_grp].items()})
 
-    def time_num_2_str(self, ti):
-        return self.cal.to_string(self.t_ax.time(ti))
+    def time_num_2_str(self, t):
+        return self.cal.to_string(self.t_ax_shyft.time(self._time_num_2_idx(t)))
+
+    def _time_num_2_idx(self, t):
+        return self.t_ax_shyft.index_of(t)
 
 
 class CellDataExtractor(ArealDataExtractor):
@@ -108,10 +112,12 @@ class CellDataExtractor(ArealDataExtractor):
         return self._ts_map_ext_methods[var_name](cat_id_lst, t).to_numpy()
 
     def get_ts(self, var_name, cell_idx):
-        if (self.stack_nm  in ['ptssk','pthsk'] and var_name in ['swe']):
-            return self._ts_ext_methods[var_name](self.cells[int(cell_idx)]).v.to_numpy()[0:-1]
-        else:
-            return self._ts_ext_methods[var_name](self.cells[int(cell_idx)]).v.to_numpy()
+        # if (self.stack_nm  in ['ptssk','pthsk'] and var_name in ['swe']):
+        #     return self._ts_ext_methods[var_name](self.cells[int(cell_idx)]).v.to_numpy()[0:-1]
+        # else:
+        #     return self._ts_ext_methods[var_name](self.cells[int(cell_idx)]).v.to_numpy()
+        ts = self._ts_ext_methods[var_name](self.cells[int(cell_idx)])
+        return ts.time_axis.time_points, ts.v.to_numpy()
 
     def get_geo_data(self, var_name, cat_id_lst):
         return self.cell_geo_data[var_name][np.in1d(self.cid,cat_id_lst)]
@@ -142,13 +148,15 @@ class SubcatDataExtractor(ArealDataExtractor):
                                          for k, v in self.outputs[self.stack_nm][output_grp].items()})
 
     def get_map(self, var_name, cat_id_lst_grp, t):
-        return np.array([self._val_ext_methods[var_name](cat_id_lst, t) for cat_id_lst in cat_id_lst_grp])
+        return np.array([self._val_ext_methods[var_name](cat_id_lst, self._time_num_2_idx(t)) for cat_id_lst in cat_id_lst_grp])
 
     def get_ts(self, var_name, cat_id_lst):
-        if (self.stack_nm in ['ptssk', 'pthsk'] and var_name in ['swe']):
-            return self._ts_map_ext_methods[var_name](cat_id_lst).v.to_numpy()[0:-1]
-        else:
-            return self._ts_map_ext_methods[var_name](cat_id_lst).v.to_numpy()
+        # if (self.stack_nm in ['ptssk', 'pthsk'] and var_name in ['swe']):
+        #     return self._ts_map_ext_methods[var_name](cat_id_lst).v.to_numpy()[0:-1]
+        # else:
+        #     return self._ts_map_ext_methods[var_name](cat_id_lst).v.to_numpy()
+        ts = self._ts_map_ext_methods[var_name](cat_id_lst)
+        return ts.time_axis.time_points, ts.v.to_numpy()
 
     def get_geo_data(self, var_name, cat_id_lst_grp):
         idx = [np.in1d(self.cid,cat_id_lst) for cat_id_lst in cat_id_lst_grp]

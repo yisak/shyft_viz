@@ -31,7 +31,7 @@ class Models(object):
 class Region(object):
     def __init__(self, rg_name, cfg_gen):
         self.cfg_gen = cfg_gen
-        self.region_model_id = '{}#ptgsk#1000m'.format(rg_name)
+        self.region_model_id = '{}#ptgsk#2000m'.format(rg_name)
         self.simulator = None
 
     @property

@@ -47,11 +47,17 @@ class Viewer(object):
         bbox = {k: v.geom.bbox for k, v in data_ext.items()}
         self.bbox = list(bbox.values())[0]
         t_ax = {k: v.t_ax for k, v in data_ext.items()}
-        self.t_ax = list(t_ax.values())[0]
-        max_ti = {k: v.t_ax.n-1 for k, v in data_ext.items()}
-        self.max_ti = list(max_ti.values())[0]
-        times = {k: [datetime.utcfromtimestamp(v.t_ax.time(i)) for i in range(v.t_ax.size())] for k, v in data_ext.items()}
-        self.times = list(times.values())[0]
+        if len(t_ax) > 1:
+            self.t_ax = np.sort(np.unique(np.concatenate([t_arr for t_arr in t_ax.values()])))
+        else:
+            self.t_ax = list(t_ax.values())[0]
+        self.t_min, self.t_max = self.t_ax[0], self.t_ax[-1]
+
+        #max_ti = {k: v.t_ax.n-1 for k, v in data_ext.items()}
+        #self.max_ti = list(max_ti.values())[0]
+        self.max_ti = len(self.t_ax)-1
+        #times = {k: [datetime.utcfromtimestamp(v.t_ax.time(i)) for i in range(v.t_ax.size())] for k, v in data_ext.items()}
+        #self.times = list(times.values())[0]
         # --------------------------------------------------------
 
         #self.alreadyplottedCatchIndx = {k: np.zeros((len(v.geom.polys)), dtype=np.int) for k, v in data_ext.items()}
@@ -173,7 +179,7 @@ class Viewer(object):
         cax = divider.append_axes("right", size="5%", pad=0.05)
         for ds in self.ds_names:
             self.map[ds] = self.ax_plt.add_collection(PatchCollection(self.patches[ds], alpha=0.9))
-            self.data = self.data_ext[ds].get_map(self.dist_var, self.map_fetching_lst[ds], self.ti)
+            self.data = self.data_ext[ds].get_map(self.dist_var, self.map_fetching_lst[ds], self.t_ax[self.ti])
             self.map[ds].set_array(self.data)
             self.cbar[ds] = self.fig.colorbar(self.map[ds], cax=cax, orientation='vertical')
             self.map[ds].set_visible(False)
@@ -210,7 +216,7 @@ class Viewer(object):
             if self.dist_var in self.geo_data:
                 self.data = self.data_ext[self.ds_active].get_geo_data(self.dist_var, self.map_fetching_lst[self.ds_active])
             else:
-                self.data = self.data_ext[self.ds_active].get_map(self.dist_var, self.map_fetching_lst[self.ds_active], self.ti)
+                self.data = self.data_ext[self.ds_active].get_map(self.dist_var, self.map_fetching_lst[self.ds_active], self.t_ax[self.ti])
             self.map[self.ds_active].set_array(self.data)
             self.update_cbar_by_data_lim()
 
@@ -262,18 +268,20 @@ class Viewer(object):
         return self.data_lim[self.dist_var][0] + val * (self.data_lim[self.dist_var][1] - self.data_lim[self.dist_var][0])
 
     def add_time_slider(self, ax_slider):
-        self.time_slider = Slider(ax_slider, 'Time', self.t_ax.start,
-                                  self.t_ax.start + self.t_ax.delta_t * (self.t_ax.size() - 1),
-                                  valinit=self.t_ax.start)
-        self.time_slider.valtext.set_text(
-            self.data_ext[self.ds_active].time_num_2_str(self.t_ax.index_of(self.time_slider.val)))
+        # self.time_slider = Slider(ax_slider, 'Time', self.t_ax.start,
+        #                           self.t_ax.start + self.t_ax.delta_t * (self.t_ax.size() - 1),
+        #                           valinit=self.t_ax.start)
+        self.time_slider = Slider(ax_slider, 'Time', self.t_ax[0], self.t_ax[-1], valinit=self.t_ax[0])
+        # self.time_slider.valtext.set_text(
+        #     self.data_ext[self.ds_active].time_num_2_str(self.t_ax.index_of(self.time_slider.val)))
+        self.time_slider.valtext.set_text(datetime.utcfromtimestamp(int(self.time_slider.val)).strftime('%Y-%m-%d %H:%M:%S'))
         self.time_slider.on_changed(self.update_time)
 
     def update_time(self,val):
-        t_indx = self.t_ax.index_of(int(self.time_slider.val))
-        #self.ti = t_indx
-        #self.update_plot() # will hang if slider dragged too fast
-        self.time_slider.valtext.set_text(self.data_ext[self.ds_active].time_num_2_str(t_indx))
+        #t_indx = self.t_ax.index_of(int(self.time_slider.val))
+        #self.time_slider.valtext.set_text(self.data_ext[self.ds_active].time_num_2_str(t_indx))
+        t_num = int(self.time_slider.val)
+        self.time_slider.valtext.set_text(datetime.utcfromtimestamp(t_num).strftime('%Y-%m-%d %H:%M:%S'))
 
     def add_media_button(self, ax_navigate):
         axcolor = 'lightgoldenrodyellow'
@@ -331,7 +339,8 @@ class Viewer(object):
 
     def OnUpdate(self, event):
         if not self._is_var_static(self.dist_var):
-            t_indx = self.t_ax.index_of(int(self.time_slider.val))
+            #t_indx = self.t_ax.index_of(int(self.time_slider.val))
+            t_indx = np.searchsorted(self.t_ax, int(self.time_slider.val))
             if self.ti != t_indx:
                 self.ti = t_indx
                 self.update_plot()
@@ -344,15 +353,20 @@ class Viewer(object):
             return False
 
     def update_plot(self):
-        self.data = self.data_ext[self.ds_active].get_map(self.dist_var, self.map_fetching_lst[self.ds_active], self.ti)
+        #self.data = self.data_ext[self.ds_active].get_map(self.dist_var, self.map_fetching_lst[self.ds_active], self.ti)
+        self.data = self.data_ext[self.ds_active].get_map(self.dist_var, self.map_fetching_lst[self.ds_active], self.t_ax[self.ti])
         self.map[self.ds_active].set_array(self.data)
+        #self.ax_plt.title.set_text(
+        #    '%s - %s' % (self.dist_var, self.data_ext[self.ds_active].time_num_2_str(self.ti)))
         self.ax_plt.title.set_text(
-            '%s - %s' % (self.dist_var, self.data_ext[self.ds_active].time_num_2_str(self.ti)))
+            '%s - %s' % (self.dist_var, self.data_ext[self.ds_active].time_num_2_str(self.t_ax[self.ti])))
         self.fig.canvas.draw()
 
     def set_labels(self):
         self.fig.canvas.set_window_title('Shyft-viz')
-        self.ax_plt.set_title('%s - %s' % (self.dist_var, self.data_ext[self.ds_active].time_num_2_str(self.ti)), fontsize=12)
+        #self.ax_plt.set_title('%s - %s' % (self.dist_var, self.data_ext[self.ds_active].time_num_2_str(self.ti)), fontsize=12)
+        self.ax_plt.set_title('%s - %s' % (self.dist_var, self.data_ext[self.ds_active].time_num_2_str(self.t_ax[self.ti])),
+                              fontsize=12)
 
     def on_click(self, event):
         if event.inaxes is not self.ax_plt: return True
@@ -392,11 +406,13 @@ class Viewer(object):
                 found_prec = ['prec' in nm for nm in unique_names]
                 if any(found_prec):
                     props[found_prec.index(True)].update({'drawstyle':'steps'})
-                tsplot.init_plot(self.times,
-                                      [self.data_ext[ds_active].get_ts(dist_var, self.ts_fetching_lst[ds_active][catchind[ds_active]])
-                                       for ds_active in valid_ds for dist_var in dist_vars[ds_active]],
+                ts_t, ts_v = zip(
+                    *[self.data_ext[ds_active].get_ts(dist_var, self.ts_fetching_lst[ds_active][catchind[ds_active]])
+                                       for ds_active in valid_ds for dist_var in dist_vars[ds_active]])
+
+                tsplot.init_plot(ts_t, ts_v,
                                  unique_names, # [dist_var + '_' + self.catch_nms[self.ds_active][catchind] for dist_var in dist_vars],
-                                      [self.var_units[ds_active][dist_var] for ds_active in valid_ds for dist_var in dist_vars[ds_active]], props)
+                                 [self.var_units[ds_active][dist_var] for ds_active in valid_ds for dist_var in dist_vars[ds_active]], props)
                 tsplot.unique_ts_names.extend(unique_names)
                 self.tsplots.append(tsplot)
             else:
@@ -407,9 +423,9 @@ class Viewer(object):
                     if tsplot.plt_mode['Re-plot']:
                         unique_names[0] = unique_names[0]+'-1'
 
-                    ts_v = self.data_ext[self.ds_active].get_ts(self.dist_var, self.ts_fetching_lst[self.ds_active][catchind[self.ds_active]])
+                    ts_t, ts_v = self.data_ext[self.ds_active].get_ts(self.dist_var, self.ts_fetching_lst[self.ds_active][catchind[self.ds_active]])
                     #print(self.dist_var)
-                    tsplot.add_plot(self.times, [ts_v],
+                    tsplot.add_plot([ts_t], [ts_v],
                                          unique_names, # [self.dist_var + '_' + self.catch_nms[self.ds_active][catchind]],
                                          [self.var_units[self.ds_active][self.dist_var]], [{'drawstyle':'steps'}] if 'prec' in unique_names[0] else [{}])
 
@@ -544,7 +560,7 @@ class TsPlot(object):
                     #self.lines.append(self.axes[0].plot(t, v[k], ls=next(self.line_styles[0]), color=self.colors[0], label=labels[k], marker=marker, ms=8, markevery=None)[0])
                     l_prop = dict(ls='-', color=color, label=labels[k], marker=next(self.markers[0]), ms=4, mec=color, markevery=7)
                     l_prop.update(prop[k])
-                    self.lines.append(self.plot(self.axes[0],t, v[k], l_prop))
+                    self.lines.append(self.plot(self.axes[0],t[k], v[k], l_prop))
                     #self.lines.append(self.axes[0].plot(t, v[k], ls=ls, color=self.colors[0], label=labels[k], marker=next(self.markers[0]), ms=8, markevery=None, drawstyle='steps')[0])
 
                     self.plotted_unit.append(units[k])
@@ -563,7 +579,7 @@ class TsPlot(object):
                         #self.lines.append(self.axes[idx].plot(t, v[k], ls=next(self.line_styles[idx]), color=color, label=labels[k], marker=marker, ms=8, markevery=None)[0])
                         l_prop = dict(ls='-', color=color, label=labels[k], marker=marker, ms=4, mec=color, markevery=7)
                         l_prop.update(prop[k])
-                        self.lines.append(self.plot(self.axes[idx], t, v[k], l_prop))
+                        self.lines.append(self.plot(self.axes[idx], t[k], v[k], l_prop))
                         #self.lines.append(self.axes[idx].plot(t, v[k], ls=ls, color=color, label=labels[k], marker=next(self.markers[0]), ms=8, markevery=None)[0])
 
                         self.axes[idx].tick_params(axis='y', colors=color)
@@ -576,7 +592,7 @@ class TsPlot(object):
                         #self.lines.append(self.axes[-1].plot(t, v[k], ls=next(self.line_styles[idx]), color=color, label=labels[k], marker=marker, ms=8, markevery=None)[0])
                         l_prop = dict(ls='-', color=color, label=labels[k], marker=next(self.markers[idx]), ms=4, mec=color, markevery=7)
                         l_prop.update(prop[k])
-                        self.lines.append(self.plot(self.axes[-1], t, v[k], l_prop))
+                        self.lines.append(self.plot(self.axes[-1], t[k], v[k], l_prop))
                         #self.lines.append(self.axes[-1].plot(t, v[k], ls=ls, color=color, label=labels[k], marker=next(self.markers[0]), ms=8, markevery=None)[0])
 
                         #print(self.lines)

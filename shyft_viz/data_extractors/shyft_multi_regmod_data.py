@@ -15,25 +15,31 @@ class DataExtractor(object):
                                   for rm in rm_lst]
         self.ts_fetching_lst = self.cell_data_ext[0].ts_fetching_lst
         self.map_fetching_lst = self.cell_data_ext[0].map_fetching_lst
-        self.n = [data_ext.t_ax.n for data_ext in self.cell_data_ext]
+        self.n = [len(data_ext.t_ax) for data_ext in self.cell_data_ext]
         self.n_cum = np.cumsum(self.n)
         self.cum = np.cumsum([0]+self.n)
         self.geom = self.cell_data_ext[0].geom
         self.catch_names = self.cell_data_ext[0].catch_names
         self.var_units = self.cell_data_ext[0].var_units
         self.cal = api.Calendar()
-        self.t_ax = api.Timeaxis(self.cell_data_ext[0].t_ax.start, self.cell_data_ext[0].t_ax.delta_t, sum(self.n))
+        self.t_ax_shyft = api.Timeaxis(self.cell_data_ext[0].t_ax.start, self.cell_data_ext[0].t_ax.delta_t, sum(self.n))
+        self.t_ax = np.array([self.t_ax_shyft.time(i) for i in range(self.t_ax_shyft.size())])
 
-    def time_num_2_str(self, ti):
-        return self.cal.to_string(self.t_ax.time(ti))
+    def time_num_2_str(self, t_num):
+        return self.cal.to_string(self.t_ax_shyft.time(self._time_num_2_idx(t_num)))
 
-    def get_map(self, var_name, cat_id_lst, t):
+    def _time_num_2_idx(self, t_num):
+        return self.t_ax_shyft.index_of(t_num)
+
+    def get_map(self, var_name, cat_id_lst, t_num):
+        t = self._time_num_2_idx(t_num)
         data_ext_idx = np.searchsorted(self.n_cum, t, side='right')
         t_idx = t-self.cum[data_ext_idx]
         return self.cell_data_ext[data_ext_idx].get_map(var_name, cat_id_lst, int(t_idx))
 
     def get_ts(self, var_name, cell_idx):
-        return np.concatenate([data_ext.get_ts(var_name, cell_idx) for data_ext in self.cell_data_ext])
+        ts_lst = [data_ext.get_ts(var_name, cell_idx) for data_ext in self.cell_data_ext]
+        return np.concatenate([ts[0] for ts in ts_lst]), np.concatenate([ts[1] for ts in ts_lst])
 
     def get_geo_data(self, var_name, cat_id_lst):
         return self.cell_data_ext[0].get_geo_data(var_name, cat_id_lst)

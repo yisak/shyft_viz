@@ -68,10 +68,14 @@ class Viewer(object):
         #self.alreadyplottedDistVar = {k: [] for k in data_ext}
         if data_ext_pt is not None:
             self.data_ext_pt = data_ext_pt  # {k: v for k, v in data_ext_pt.items()}
-            self.ds_names_pt = ['SNOWMAN']
-            self.ds_actve_pt = ['SNOWMAN']
+            self.var_units_pt = {k: v.var_units for k, v in data_ext_pt.items()}
+            self.ds_names_pt = list(data_ext_pt.keys())
+            self.ds_active_pt = self.ds_names_pt[0]
             self.pt_vars = ['swe']
             self.pt_var = 'swe'
+            self.nb_pts = {k: v.nb_pts for k, v in data_ext_pt.items()}
+            self.pt_nms = {k: v.names for k, v in data_ext_pt.items()}
+            self.pt_coord = {k: v.coord for k, v in data_ext_pt.items()}
 
         self.ds_names = list(data_ext.keys())
         self.ds_active = default_ds
@@ -113,7 +117,7 @@ class Viewer(object):
         if data_ext_pt is None:
             gs_var_select = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=gs[0, 0])
         else:
-            gs_var_select = gridspec.GridSpecFromSubplotSpec(3, 1, subplot_spec=gs[0, 0])
+            gs_var_select = gridspec.GridSpecFromSubplotSpec(4, 1, subplot_spec=gs[0, 0])
         gs_plot = gridspec.GridSpecFromSubplotSpec(3, 1, subplot_spec=gs[0, 1], height_ratios=[0.1,0.8,0.1])
         gs_options = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=gs[0, 2])
         gs_lim_slider = gridspec.GridSpecFromSubplotSpec(2, 3, subplot_spec=gs_plot[2, 0], width_ratios=[0.025,0.775,0.2])
@@ -122,13 +126,13 @@ class Viewer(object):
         self.ax_plt = self.fig.add_subplot(gs_plot[1, 0])
         ax_dataset_slect = self.fig.add_subplot(gs_var_select[0, 0])
         ax_map_var_slect = self.fig.add_subplot(gs_var_select[1, 0])
-        #ax_geo_data_slect = self.fig.add_subplot(gs_var_select[1, 0])
+
         if data_ext_pt is not None:
-            ax_pt_var_slect = self.fig.add_subplot(gs_var_select[2, 0])
+            ax_pt_dataset_slect = self.fig.add_subplot(gs_var_select[2, 0])
+            ax_pt_var_slect = self.fig.add_subplot(gs_var_select[3, 0])
             self.add_pt_plot()
             self.fig.canvas.mpl_connect('pick_event', self.on_pick)
 
-        #ax_options_1 = self.fig.add_subplot(gs[0,2])
         ax_options_1 = self.fig.add_subplot(gs_options[0,0])
         ax_oper_plots = self.fig.add_subplot(gs_options[1, 0])
         ax_min_slider = self.fig.add_subplot(gs_lim_slider[0, 1])
@@ -157,13 +161,19 @@ class Viewer(object):
         self.add_media_button(ax_navigate)
         self.reset_lim_btn = self.add_reset_button(ax_reset_button, 'Reset', self.update_cbar_by_data_lim)
         if data_ext_pt is not None:
-            self.pt_var_sel_btn = self.add_radio_button(ax_pt_var_slect, 'Pt_Vars', self.pt_vars, None)
+            self.pt_var_sel_btn = self.add_radio_button(ax_pt_var_slect, 'Pt_Vars', self.pt_vars, self.OnPtVarBtnClk)
+            self.pt_var_sel_btn.set_active(self.pt_vars.index(self.pt_var))
+            self.pt_dataset_sel_btn = self.add_radio_button(ax_pt_dataset_slect, 'Pt_Datasets', self.ds_names_pt,
+                                                            self.OnPtDatasetSelect)
+            self.pt_dataset_sel_btn.set_active(self.ds_names_pt.index(self.ds_active_pt))
         self.dist_var_sel_btn = self.add_radio_button(ax_map_var_slect, 'Dist_Vars', self.dist_vars, self.OnDistVarBtnClk)
         self.dist_var_sel_btn.set_active(self.dist_vars.index(self.dist_var)) # not available on older version of matplotlib
 
-        self.dataset_sel_btn = self.add_radio_button(ax_dataset_slect, 'Datasets', self.ds_names,
+        self.dataset_sel_btn = self.add_radio_button(ax_dataset_slect, 'Dist_Datasets', self.ds_names,
                                                       self.OnDatasetSelect)
         self.dataset_sel_btn.set_active(self.ds_names.index(self.ds_active))
+
+
 
         gs.tight_layout(self.fig)
 
@@ -189,7 +199,7 @@ class Viewer(object):
             self.map[ds].set_visible(False)
 
     def add_pt_plot(self):
-        self.ax_plt.plot(self.data_ext_pt.coord[:, 0], self.data_ext_pt.coord[:, 1], marker='o', ls='None', ms=8, mfc='none',
+        self.ax_plt.plot(self.pt_coord[self.ds_active_pt][:, 0], self.pt_coord[self.ds_active_pt][:, 1], marker='o', ls='None', ms=8, mfc='none',
                         mec='r', mew=2, picker=5)
 
     def update_cbar(self, event):
@@ -223,6 +233,33 @@ class Viewer(object):
                 self.data = self.data_ext[self.ds_active].get_map(self.dist_var, self.map_fetching_lst[self.ds_active], self.t_ax[self.ti])
             self.map[self.ds_active].set_array(self.data)
             self.update_cbar_by_data_lim()
+
+    def OnPtDatasetSelect(self, label):
+        #dist_var = self.dist_var_sel_btn.value_selected
+        if self.pt_var_sel_btn.value_selected not in self.var_units_pt[label]:
+            print("Dataset '{}' does not contain Variable '{}'".format(label, self.pt_var_sel_btn.value_selected))
+            self.pt_dataset_sel_btn.set_active(self.ds_names_pt.index(self.ds_active_pt))
+        else:
+            #self.map[self.ds_active].set_visible(False)
+            #self.map[label].set_visible(True)
+            self.ds_active_pt = label
+            self.OnPtVarBtnClk(self.pt_var_sel_btn.value_selected)
+            self.fig.canvas.draw()
+
+    def OnPtVarBtnClk(self, label):
+        if label not in self.var_units_pt[self.ds_active_pt]:
+            print("Dataset '{}' does not contain Variable '{}'".format(self.ds_active_pt,label))
+            self.pt_var_sel_btn.set_active(self.pt_vars.index(self.pt_var))
+        else:
+            # self.ax_plt.set_title(self.ax_plt.get_title().replace(self.dist_var, label), fontsize=12)
+            self.pt_var = label
+            #print(self.dist_var)
+            # if self.dist_var in self.geo_data:
+            #     self.data = self.data_ext[self.ds_active].get_geo_data(self.dist_var, self.map_fetching_lst[self.ds_active])
+            # else:
+            #     self.data = self.data_ext[self.ds_active].get_map(self.dist_var, self.map_fetching_lst[self.ds_active], self.t_ax[self.ti])
+            # self.map[self.ds_active].set_array(self.data)
+            # self.update_cbar_by_data_lim()
 
     def OnCustomPltBtnClk(self, label):
         self.custom_plt_active = label
@@ -450,7 +487,7 @@ class Viewer(object):
             x = event.mouseevent.xdata
             y = event.mouseevent.ydata
 
-            distances = np.hypot(x - self.data_ext_pt.coord[event.ind, 0], y - self.data_ext_pt.coord[event.ind, 1])
+            distances = np.hypot(x - self.pt_coord[self.ds_active_pt][event.ind, 0], y - self.pt_coord[self.ds_active_pt][event.ind, 1])
             indmin = distances.argmin()
             catchind = event.ind[indmin]
 
@@ -459,30 +496,30 @@ class Viewer(object):
             if len(tsplots_active)==0: # or self.plt_mode['Custom_Plot']:
                 tsplot = TsPlot(self.time_marker)
 
-                tsplot.alreadyplottedPtIndx = np.zeros(self.data_ext_pt.nb_pts, dtype=np.int)
+                tsplot.alreadyplottedPtIndx = np.zeros(self.nb_pts[self.ds_active_pt], dtype=np.int)
                 tsplot.alreadyplottedPtVar = []
                 tsplot.unique_ts_names = []
-                ts_t, ts_v = self.data_ext_pt.get_ts(self.pt_var, catchind)
+                ts_t, ts_v = self.data_ext_pt[self.ds_active_pt].get_ts(self.pt_var, catchind)
                 tsplot.init_plot(ts_t, [ts_v],
-                                         [self.pt_var + '_' + self.data_ext_pt.names[catchind]],
-                                         [self.data_ext_pt.units[self.pt_var]],[{'ls':'None'}])
+                                         [self.pt_var + '_' + self.pt_nms[self.ds_active_pt][catchind]],
+                                         [self.var_units_pt[self.pt_var]],[{'ls':'None'}])
                 tsplot.alreadyplottedPtIndx[catchind] = 1
                 tsplot.alreadyplottedPtVar.append(self.pt_var)
-                tsplot.unique_ts_names.extend([self.pt_var + '_' + self.data_ext_pt.names[catchind]])
+                tsplot.unique_ts_names.extend([self.pt_var + '_' + self.pt_nms[self.ds_active_pt][catchind]])
                 self.tsplots.append(tsplot)
             else:
                 for tsplot in tsplots_active:
                     if tsplot.alreadyplottedPtIndx[catchind] and self.pt_var in \
                             tsplot.alreadyplottedPtVar and not tsplot.plt_mode['Re-plot']: return True
 
-                    ts_t, ts_v = self.data_ext_pt.get_ts(self.pt_var, catchind)
+                    ts_t, ts_v = self.data_ext_pt[self.ds_active_pt].get_ts(self.pt_var, catchind)
                     print(self.pt_var)
                     tsplot.add_plot(ts_t, [ts_v],
-                                         [self.pt_var + '_' + self.data_ext_pt.names[catchind]],
-                                         [self.data_ext_pt.units[self.pt_var]], [{'ls':'None'}])
+                                         [self.pt_var + '_' + self.pt_nms[self.ds_active_pt][catchind]],
+                                         [self.var_units_pt[self.pt_var]], [{'ls':'None'}])
                     tsplot.alreadyplottedPtIndx[catchind] = 1
                     tsplot.alreadyplottedPtVar.append(self.pt_var)
-                    tsplot.unique_ts_names.extend([self.pt_var + '_' + self.data_ext_pt.names[catchind]])
+                    tsplot.unique_ts_names.extend([self.pt_var + '_' + self.pt_nms[self.ds_active_pt][catchind]])
 
 
 class TsPlot(object):

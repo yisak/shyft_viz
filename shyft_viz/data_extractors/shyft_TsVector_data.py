@@ -23,7 +23,7 @@ class TsVectorDataExtractor(object):
         self.t_ax_shyft = api.TimeAxis(api.UtcTimeVector(self.t_ax.tolist()))
 
         if preprocess:
-            ts_t, ts_v = zip(*[(m.time_axis.time_points, m.v.to_numpy()) for m in ts_vct])
+            ts_t, ts_v = zip(*[(ts.time_axis.time_points[0:ts.size()], ts.v.to_numpy()) for ts in ts_vct])
             self.data = {'q_avg': {'t': ts_t, 'v': ts_v}}
             self.get_ts = self._get_ts_from_preprocessed
         else:

@@ -22,6 +22,9 @@ class SMGDataExtractor(object):
         self.ts_fetching_lst = list(range(len(self.catch_names)))
         self.data = {'q_avg':np.array([self.tsp[uid].v.to_numpy() for uid in self.ts_uid])}
 
+        self.temporal_vars = ['prec', 'temp', 'rad', 'ws', 'rh']  # TODO: make this a property
+        self.static_vars = []  # TODO: make this a property
+
     def get_map(self, var_name, cat_id_lst_grp, t):
         return self.data[var_name][:, t]
 

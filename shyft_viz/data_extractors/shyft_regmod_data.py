@@ -50,6 +50,8 @@ class ArealDataExtractor(object):
         self.var_units = {'prec': u[3], 'temp': u[0], 'swe': u[1], 'q_avg': u[2], 'rad': u[4], 'ws': u[5], 'rh': u[6],
                           'z': u[7]}
         self.geo_attr = ['z', 'gf', 'lf', 'rf', 'ff']
+        self.temporal_vars = ['prec', 'temp', 'swe', 'q_avg', 'rad', 'ws', 'rh']  # TODO: make this a property
+        self.static_vars = ['z']  # TODO: make this a property
         geo_attr_all = ['x', 'y', 'z', 'area', 'c_id', 'rsf', 'gf', 'lf', 'rf', 'ff', 'uf']
         self.cell_geo_data = np.rec.fromrecords(self.cells.geo_cell_data_vector(self.cells).to_numpy().reshape(
             len(self.cells), len(geo_attr_all)),names=','.join(geo_attr_all))
@@ -159,7 +161,6 @@ class SubcatDataExtractor(ArealDataExtractor):
                                          for k, v in self.outputs[self.stack_nm][output_grp].items() if hasattr(self.rm, output_grp)})
 
     def get_map(self, var_name, cat_id_lst_grp, t):
-        print(cat_id_lst_grp)
         return np.array([self._val_ext_methods[var_name](cat_id_lst, self._time_num_2_idx(t)) for cat_id_lst in cat_id_lst_grp])
 
     def get_ts(self, var_name, cat_id_lst):

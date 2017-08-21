@@ -30,6 +30,9 @@ class TsVectorDataExtractor(object):
             self.data = {'q_avg': ts_vct}
             self.get_ts = self._get_ts_from_tsvct
 
+        self.temporal_vars = ['q_avg']  # TODO: make this a property
+        self.static_vars = []  # TODO: make this a property
+
     def _get_tarr_from_ts(self, ts):
         # Using time_axis.time_points
         # return ts.time_axis.time_points

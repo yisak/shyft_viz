@@ -21,6 +21,8 @@ class DataExtractor(object):
         self.geom = self.cell_data_ext[0].geom
         self.catch_names = self.cell_data_ext[0].catch_names
         self.var_units = self.cell_data_ext[0].var_units
+        self.temporal_vars = self.cell_data_ext[0].temporal_vars
+        self.static_vars = self.cell_data_ext[0].static_vars
         self.cal = api.Calendar()
         self.t_ax_shyft = api.Timeaxis(self.cell_data_ext[0].t_ax.start, self.cell_data_ext[0].t_ax.delta_t, sum(self.n))
         self.t_ax = np.array([self.t_ax_shyft.time(i) for i in range(self.t_ax_shyft.size())])

@@ -14,11 +14,13 @@ class GeoTsVectorDataExtractor(object):
                           'rh':'fraction [0-1]'}
         #ts_vct_dict can be of type api.ARegionEnvironment
         if isinstance(ts_vct_dict, api.ARegionEnvironment):
-            self.src_types = {'prec': 'precipitation', 'temp': 'temperature', 'ws': 'wind_speed', 'rh': 'rel_hum',
-                              'rad': 'radiation'}
-            self.ts_vct_dict = {nm: getattr(ts_vct_dict, src_type) for nm, src_type in self.src_types.items()}
+            self.src_types = {'precipitation': 'prec', 'temperature': 'temp', 'wind_speed': 'ws', 'rel_hum': 'rh',
+                              'radiation': 'rad'}
+            self.ts_vct_dict = {src_type: getattr(ts_vct_dict, nm) for nm, src_type in self.src_types.items()}
         else:
-            self.ts_vct_dict = ts_vct_dict
+            self.src_types = {'precipitation': 'prec', 'temperature': 'temp', 'wind_speed': 'ws', 'relative_humidity': 'rh',
+                              'radiation': 'rad'}
+            self.ts_vct_dict = {self.src_types[nm]: ts_vct_dict[nm] for nm, src_vct in ts_vct_dict.items()}
 
         xyz = {nm: np.array([[src.mid_point().x, src.mid_point().y, src.mid_point().z] for src in vct]) for nm, vct
                     in self.ts_vct_dict.items()}
@@ -46,8 +48,11 @@ class GeoTsVectorDataExtractor(object):
             self.map_fetching_lst = self.geom.map_fetching_lst
         # ---***---
 
-        self.temporal_vars = ['prec', 'temp', 'rad', 'ws', 'rh']  # TODO: make this a property
         self.static_vars = []  # TODO: make this a property
+
+    @property
+    def temporal_vars(self):
+        return list(self.ts_vct_dict.keys())
 
     def _all_pts_match_across_src_type(self, xyz):
         L = list(xyz.values())
@@ -57,7 +62,7 @@ class GeoTsVectorDataExtractor(object):
         return self.cal.to_string(self.get_closest_time(t_num))
 
     def _time_num_2_idx(self, t_num):
-        return self.t_ax_shyft.index_of(int(t_num))
+        return self.t_ax_shyft.index_of(int(t_num), 0)
 
     def get_closest_time(self, t_num):
         return self.t_ax_shyft.time(self._time_num_2_idx(t_num))

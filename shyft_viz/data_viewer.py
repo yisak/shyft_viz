@@ -179,14 +179,8 @@ class Viewer(object):
         self.dataset_sel_btn = self.add_radio_button(ax_dataset_slect, 'Dist_Datasets', self.ds_names,
                                                       self.OnDatasetSelect)
         self.dataset_sel_btn.set_active(self.ds_names.index(self.ds_active))
-
-
-
         gs.tight_layout(self.fig)
-
         self.timer = self.fig.canvas.new_timer(interval=50)
-        #if data_ext_pt is not None:
-        #    self.fig.canvas.mpl_connect('pick_event', self.on_pick)
         self.fig.canvas.mpl_connect('button_press_event', self.on_click)
         plt.show()
 
@@ -242,13 +236,10 @@ class Viewer(object):
             self.update_cbar_by_data_lim()
 
     def OnPtDatasetSelect(self, label):
-        #dist_var = self.dist_var_sel_btn.value_selected
         if self.pt_var_sel_btn.value_selected not in self.var_units_pt[label]:
             print("Dataset '{}' does not contain Variable '{}'".format(label, self.pt_var_sel_btn.value_selected))
             self.pt_dataset_sel_btn.set_active(self.ds_names_pt.index(self.ds_active_pt))
         else:
-            #self.map[self.ds_active].set_visible(False)
-            #self.map[label].set_visible(True)
             self.ds_active_pt = label
             self.OnPtVarBtnClk(self.pt_var_sel_btn.value_selected)
             self.fig.canvas.draw()
@@ -258,15 +249,7 @@ class Viewer(object):
             print("Dataset '{}' does not contain Variable '{}'".format(self.ds_active_pt,label))
             self.pt_var_sel_btn.set_active(self.pt_vars.index(self.pt_var))
         else:
-            # self.ax_plt.set_title(self.ax_plt.get_title().replace(self.dist_var, label), fontsize=12)
             self.pt_var = label
-            #print(self.dist_var)
-            # if self.dist_var in self.geo_data:
-            #     self.data = self.data_ext[self.ds_active].get_geo_data(self.dist_var, self.map_fetching_lst[self.ds_active])
-            # else:
-            #     self.data = self.data_ext[self.ds_active].get_map(self.dist_var, self.map_fetching_lst[self.ds_active], self.t_ax[self.ti])
-            # self.map[self.ds_active].set_array(self.data)
-            # self.update_cbar_by_data_lim()
 
     def OnCustomPltBtnClk(self, label):
         self.custom_plt_active = label
@@ -316,18 +299,11 @@ class Viewer(object):
         return self.data_lim[self.dist_var][0] + val * (self.data_lim[self.dist_var][1] - self.data_lim[self.dist_var][0])
 
     def add_time_slider(self, ax_slider):
-        # self.time_slider = Slider(ax_slider, 'Time', self.t_ax.start,
-        #                           self.t_ax.start + self.t_ax.delta_t * (self.t_ax.size() - 1),
-        #                           valinit=self.t_ax.start)
         self.time_slider = Slider(ax_slider, 'Time', self.t_ax[0], self.t_ax[-1], valinit=self.t_ax[0])
-        # self.time_slider.valtext.set_text(
-        #     self.data_ext[self.ds_active].time_num_2_str(self.t_ax.index_of(self.time_slider.val)))
         self.time_slider.valtext.set_text(datetime.utcfromtimestamp(int(self.time_slider.val)).strftime('%Y-%m-%d %H:%M:%S'))
         self.time_slider.on_changed(self.update_time)
 
     def update_time(self,val):
-        #t_indx = self.t_ax.index_of(int(self.time_slider.val))
-        #self.time_slider.valtext.set_text(self.data_ext[self.ds_active].time_num_2_str(t_indx))
         t_num = int(self.time_slider.val)
         self.time_slider.valtext.set_text(datetime.utcfromtimestamp(t_num).strftime('%Y-%m-%d %H:%M:%S'))
 
@@ -401,48 +377,39 @@ class Viewer(object):
             return False
 
     def update_plot(self):
-        #self.data = self.data_ext[self.ds_active].get_map(self.dist_var, self.map_fetching_lst[self.ds_active], self.ti)
         self.data = self.data_ext[self.ds_active].get_map(self.dist_var, self.map_fetching_lst[self.ds_active], self.t_ax[self.ti])
         self.map[self.ds_active].set_array(self.data)
-        #self.ax_plt.title.set_text(
-        #    '%s - %s' % (self.dist_var, self.data_ext[self.ds_active].time_num_2_str(self.ti)))
         self.ax_plt.title.set_text(
             '%s - %s' % (self.dist_var, self.data_ext[self.ds_active].time_num_2_str(self.t_ax[self.ti])))
         self.fig.canvas.draw()
 
     def set_labels(self):
         self.fig.canvas.set_window_title('Shyft-viz')
-        #self.ax_plt.set_title('%s - %s' % (self.dist_var, self.data_ext[self.ds_active].time_num_2_str(self.ti)), fontsize=12)
         self.ax_plt.set_title('%s - %s' % (self.dist_var, self.data_ext[self.ds_active].time_num_2_str(self.t_ax[self.ti])),
                               fontsize=12)
 
     def on_click(self, event):
         if event.inaxes is not self.ax_plt: return True
         if self.plt_mode_active == 'Custom_Plot' and self.ds_active not in self.custom_plt[self.custom_plt_active].keys():
-            #print('here')
             return True
         tb = self.fig.canvas.manager.toolbar
         if not self.plt_mode_active == 'Plot_Source' and tb.mode == '':
             x = event.xdata
             y = event.ydata
             catchind = {self.ds_active: self.which_catch(x, y, self.ds_active)}
-            #print(catchind)
             if catchind[self.ds_active] is None: return True
             unique_names = [self.ds_active + '-' + self.dist_var + '-' + self.catch_nms[self.ds_active][catchind[self.ds_active]]]
             tsplots_active = [p for p in self.tsplots if p.fig is not None and p.plt_mode['Plot_over']]
             if len(tsplots_active)==0 or self.plt_mode_active == 'Custom_Plot':
                 tsplot = TsPlot(self.time_marker)
-
                 tsplot.unique_ts_names = []
                 if self.plt_mode_active == 'Custom_Plot':
                     catchind_ = {k: self.which_catch(x, y, k) for k in self.custom_plt[self.custom_plt_active] if k!= self.ds_active}
                     catchind.update({k: v for k, v in catchind_.items() if v is not None})
                     valid_ds = list(catchind.keys())
-                    # dist_vars = ['temp', 'q_avg', 'prec']
                     dist_vars = self.custom_plt[self.custom_plt_active]
                     unique_names = [ds_active + '-' + dist_var + '-' + self.catch_nms[ds_active][catchind[ds_active]]
                                     for ds_active in valid_ds for dist_var in dist_vars [ds_active]]
-                    #print(unique_names)
                 else:
                     if not self._is_var_static(self.dist_var):
                         valid_ds = [self.ds_active]
@@ -458,8 +425,7 @@ class Viewer(object):
                     *[self.data_ext[ds_active].get_ts(dist_var, self.ts_fetching_lst[ds_active][catchind[ds_active]])
                                        for ds_active in valid_ds for dist_var in dist_vars[ds_active]])
 
-                tsplot.init_plot(list(ts_t), ts_v,
-                                 unique_names, # [dist_var + '_' + self.catch_nms[self.ds_active][catchind] for dist_var in dist_vars],
+                tsplot.init_plot(list(ts_t), ts_v, unique_names,
                                  [self.var_units[ds_active][dist_var] for ds_active in valid_ds for dist_var in dist_vars[ds_active]], props)
                 tsplot.unique_ts_names.extend(unique_names)
                 self.tsplots.append(tsplot)
@@ -472,14 +438,10 @@ class Viewer(object):
                         unique_names[0] = unique_names[0]+'-1'
 
                     ts_t, ts_v = self.data_ext[self.ds_active].get_ts(self.dist_var, self.ts_fetching_lst[self.ds_active][catchind[self.ds_active]])
-                    #print(self.dist_var)
-                    tsplot.add_plot([ts_t], [ts_v],
-                                         unique_names, # [self.dist_var + '_' + self.catch_nms[self.ds_active][catchind]],
-                                         [self.var_units[self.ds_active][self.dist_var]], [{'drawstyle':'steps'}] if 'prec' in unique_names[0] else [{}])
 
+                    tsplot.add_plot([ts_t], [ts_v], unique_names, [self.var_units[self.ds_active][self.dist_var]],
+                                    [{'drawstyle':'steps'}] if 'prec' in unique_names[0] else [{}])
                     tsplot.unique_ts_names.extend(unique_names)
-
-
 
     def on_pick(self, event):
         tb = self.fig.canvas.manager.toolbar
@@ -499,34 +461,30 @@ class Viewer(object):
             catchind = event.ind[indmin]
 
             self.lastind = catchind
+            unique_names = [self.ds_active_pt + '_' + self.pt_var + '_' + self.pt_nms[self.ds_active_pt][catchind]]
             tsplots_active = [p for p in self.tsplots if p.fig is not None and p.plt_mode['Plot_over']]
             if len(tsplots_active)==0: # or self.plt_mode['Custom_Plot']:
                 tsplot = TsPlot(self.time_marker)
-
-                tsplot.alreadyplottedPtIndx = np.zeros(self.nb_pts[self.ds_active_pt], dtype=np.int)
-                tsplot.alreadyplottedPtVar = []
                 tsplot.unique_ts_names = []
+                props = [{} for _ in unique_names]
+                found_prec = ['prec' in nm for nm in unique_names]
+                if any(found_prec):
+                    props[found_prec.index(True)].update({'drawstyle': 'steps'})
                 ts_t, ts_v = self.data_ext_pt[self.ds_active_pt].get_ts(self.pt_var, catchind)
-                tsplot.init_plot([ts_t], [ts_v],
-                                         [self.pt_var + '_' + self.pt_nms[self.ds_active_pt][catchind]],
-                                         [self.var_units_pt[self.ds_active_pt][self.pt_var]], [{}])# ,[{'ls':'None'}])
-                tsplot.alreadyplottedPtIndx[catchind] = 1
-                tsplot.alreadyplottedPtVar.append(self.pt_var)
-                tsplot.unique_ts_names.extend([self.pt_var + '_' + self.pt_nms[self.ds_active_pt][catchind]])
+                tsplot.init_plot([ts_t], [ts_v], unique_names, [self.var_units_pt[self.ds_active_pt][self.pt_var]],
+                                 props)# ,[{'ls':'None'}])
+
+                tsplot.unique_ts_names.extend(unique_names)
                 self.tsplots.append(tsplot)
             else:
                 for tsplot in tsplots_active:
-                    if tsplot.alreadyplottedPtIndx[catchind] and self.pt_var in \
-                            tsplot.alreadyplottedPtVar and not tsplot.plt_mode['Re-plot']: return True
+                    if unique_names[0] in tsplot.unique_ts_names and not tsplot.plt_mode['Re-plot']: return True
 
                     ts_t, ts_v = self.data_ext_pt[self.ds_active_pt].get_ts(self.pt_var, catchind)
                     print(self.pt_var)
-                    tsplot.add_plot([ts_t], [ts_v],
-                                         [self.pt_var + '_' + self.pt_nms[self.ds_active_pt][catchind]],
-                                         [self.var_units_pt[self.ds_active_pt][self.pt_var]], [{}])# ,[{'ls':'None'}])
-                    tsplot.alreadyplottedPtIndx[catchind] = 1
-                    tsplot.alreadyplottedPtVar.append(self.pt_var)
-                    tsplot.unique_ts_names.extend([self.pt_var + '_' + self.pt_nms[self.ds_active_pt][catchind]])
+                    tsplot.add_plot([ts_t], [ts_v], unique_names, [self.var_units_pt[self.ds_active_pt][self.pt_var]],
+                                    [{'drawstyle':'steps'}] if 'prec' in unique_names[0] else [{}])# ,[{'ls':'None'}])
+                    tsplot.unique_ts_names.extend(unique_names)
 
 
 class TsPlot(object):

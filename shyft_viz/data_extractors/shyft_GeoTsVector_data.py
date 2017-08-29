@@ -4,10 +4,10 @@ import numpy as np
 from shyft import api
 from ..geom_preps.forecast_grid_geom import GridViewerPrep
 
-class GeoTsGridDataExtractorError(Exception):
+class GeoTsVectorDataExtractorError(Exception):
     pass
 
-class GeoTsGridDataExtractor(object):
+class GeoTsVectorDataExtractor(object):
     def __init__(self, ts_vct_dict, as_pt_dataset=True, geom=None, model_cs=None, fc_cs=None, dxy=None):
         self.cal = api.Calendar()
         self.std_units = {'temp': 'degree_celsius', 'prec': 'mm_per_hr', 'rad': 'W_per_m2', 'ws': 'm_per_sec',
@@ -25,7 +25,7 @@ class GeoTsGridDataExtractor(object):
 
         if len(xyz) > 1:
             if not self._all_pts_match_across_src_type(xyz):
-                raise GeoTsGridDataExtractorError('The points do not match across the different source types.')
+                raise GeoTsVectorDataExtractorError('The points do not match across the different source types.')
 
         self.xyz = list(xyz.values())[0]
         # ---Attributes expected by Viewer---

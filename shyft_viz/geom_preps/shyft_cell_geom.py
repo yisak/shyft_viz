@@ -1,36 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.path as mpath
-import matplotlib.patches as mpatches
 from matplotlib.collections import PatchCollection
-from shapely.geometry import MultiPolygon,Polygon
+from shapely.geometry import MultiPolygon
 from shapely.ops import cascaded_union
-
-#from data_extractor import CellDataExtractor
-
-def mpoly_2_pathpatch(mpoly):
-    #print(type(mpoly))
-    assert isinstance(mpoly, (MultiPolygon, Polygon))
-
-    codes = []
-    all_x = []
-    all_y = []
-
-    if(isinstance(mpoly, Polygon)):
-        mpoly = [mpoly]
-
-    for poly in mpoly:
-        x = np.array(poly.exterior)[:,0].tolist()
-        y = np.array(poly.exterior)[:,1].tolist()
-        # skip boundary between individual rings
-        codes += [mpath.Path.MOVETO] + (len(x)-1)*[mpath.Path.LINETO]
-        all_x += x
-        all_y += y
-
-    carib_path = mpath.Path(np.column_stack((all_x,all_y)), codes)
-    carib_patch = mpatches.PathPatch(carib_path)#,lw=0.5,fc='blue', alpha=0.3)#facecolor='none'
-
-    return carib_patch
+from .utils import mpoly_2_pathpatch
 
 class ViewerPrep(object):
     def __init__(self, cell_cid_full, cell_shapes_full, catchment_id_map, bbox):

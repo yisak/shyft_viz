@@ -48,8 +48,8 @@ class Viewer(object):
         self.nb_catch = {k: len(v.geom.polys) for k, v in data_ext.items()}
         self.catch_nms = {k: v.catch_names for k, v in data_ext.items()}
         self.var_units = {k: v.var_units for k, v in data_ext.items()}
-        self.dist_vars = [var for v in data_ext.values() for var in v.temporal_vars if var in temporal_vars]
-        self.geo_data = [var for v in data_ext.values() for var in v.static_vars if var in static_vars]
+        self.dist_vars = list(set([var for v in data_ext.values() for var in v.temporal_vars if var in temporal_vars]))
+        self.geo_data = list(set([var for v in data_ext.values() for var in v.static_vars if var in static_vars]))
         # -Just picking the value for one of the datasets for now-
         bbox = {k: v.geom.bbox for k, v in data_ext.items()}
         self.bbox = list(bbox.values())[0]
@@ -88,7 +88,7 @@ class Viewer(object):
 
             #all_pt_vars = list(set().union(*[v.temporal_vars for v in data_ext_pt.values()]))
             #self.pt_vars = [var for var in temporal_vars if var in all_pt_vars]
-            self.pt_vars = [var for v in data_ext_pt.values() for var in v.temporal_vars if var in temporal_vars]
+            self.pt_vars = list(set([var for v in data_ext_pt.values() for var in v.temporal_vars if var in temporal_vars]))
             self.ds_names_pt = list(data_ext_pt.keys())
 
             self.ds_active_pt = default_pt_ds

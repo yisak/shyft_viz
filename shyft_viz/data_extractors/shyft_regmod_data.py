@@ -121,7 +121,7 @@ class CellDataExtractor(ArealDataExtractor):
         self._ts_ext_methods.update({k: lambda cell, v=v: getattr(cell.sc, v) for k, v in self.states[self.stack_nm].items()})
 
     def get_map(self, var_name, cat_id_lst, t):
-        return self._ts_map_ext_methods[var_name](cat_id_lst, t).to_numpy()
+        return self._ts_map_ext_methods[var_name](cat_id_lst, self._time_num_2_idx(t)).to_numpy()
 
     def get_ts(self, var_name, cell_idx):
         # if (self.stack_nm  in ['ptssk','pthsk'] and var_name in ['swe']):

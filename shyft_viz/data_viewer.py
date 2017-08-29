@@ -497,24 +497,11 @@ class TsPlot(object):
         self.reset_plot()
         self.colors = cycle(['b', 'g', 'r', 'k', 'm', 'y', 'c'])
         self.line_styles = [cycle(['-', '--', '-.', ':']) for _ in range(4)]
-        # Filter out filled markers and marker settings that do nothing.
-        # We use iteritems from six to make sure that we get an iterator
-        # in both python 2 and 3
-        unfilled_markers = [m for m, func in Line2D.markers.items()
-                            if func != 'nothing' and m not in Line2D.filled_markers]
-        markers = {'*': 'star', '2': 'tri_up', 2: 'tickup', 'o': 'circle', 4: 'caretleft', 5: 'caretright',
-                   '_': 'hline', '.': 'point', 'd': 'thin_diamond', '4': 'tri_right', '': 'nothing', 'None': 'nothing',
-                   3: 'tickdown', ' ': 'nothing', 7: 'caretdown', 'x': 'x', 0: 'tickleft', '+': 'plus',
-                   '<': 'triangle_left', '|': 'vline', '8': 'octagon', 1: 'tickright', 6: 'caretup', 's': 'square',
-                   'p': 'pentagon', ',': 'pixel', '^': 'triangle_up', 'D': 'diamond', None: 'nothing', 'H': 'hexagon2',
-                   '3': 'tri_left', '>': 'triangle_right', 'h': 'hexagon1', 'v': 'triangle_down', '1': 'tri_down'}
         self.markers = [cycle([None, 'o', '*', 's', 'v', 'x', 'p', '+']) for _ in range(4)]
         self.temp = [0.85, 0.75, 0.6]
         self.i = 1
-
         self.plt_mode = {'Plot_over': False, 'Re-plot': False}
         self.gs = gridspec.GridSpec(1, 2, width_ratios=[0.1, 0.9])  # , height_ratios=[2,1])
-
 
     def add_check_button(self, but_ax1, title, labels, vals, func):
         axcolor = 'lightgoldenrodyellow'
@@ -533,7 +520,6 @@ class TsPlot(object):
         self.lines = []
         #self.fig.autofmt_xdate()
         #self.cursor = Cursor(self.ax, useblit=True, color='red', linewidth=2)
-
 
     def init_plot(self, t, v, labels, units, prop):
         self.fig = plt.figure(figsize=(15, 6))#, (15, 6))  # , facecolor='white')

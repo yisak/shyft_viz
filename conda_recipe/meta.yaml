@@ -19,7 +19,7 @@ requirements:
     run:
         - python
         - {{ pin_compatible('numpy') }}
-		- matplotlib
+        - matplotlib
 about:
     home: https://github.com/yisak/shyft_viz
     license: LGPL v.3

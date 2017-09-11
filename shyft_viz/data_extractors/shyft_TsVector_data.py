@@ -30,8 +30,11 @@ class TsVectorDataExtractor(object):
             self.data = {'q_avg': ts_vct}
             self.get_ts = self._get_ts_from_tsvct
 
-        self.temporal_vars = ['q_avg']  # TODO: make this a property
         self.static_vars = []  # TODO: make this a property
+
+    @property
+    def temporal_vars(self):
+        return list(self.data.keys())
 
     def _get_tarr_from_ts(self, ts):
         # Using time_axis.time_points
@@ -40,7 +43,7 @@ class TsVectorDataExtractor(object):
         return [ts.time(i) for i in range(ts.size())]
 
     def get_closest_time(self, t_num):
-        return self.t_ax_shyft.time(self.t_ax_shyft.index_of(t_num))
+        return self.t_ax_shyft.time(self.t_ax_shyft.index_of(t_num, 0))
 
     def time_num_2_str(self, t_num):
         return self.cal.to_string(self.get_closest_time(t_num))

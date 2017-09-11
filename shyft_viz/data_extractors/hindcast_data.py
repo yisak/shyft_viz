@@ -17,6 +17,12 @@ class HindcastDataExtractor(object):
         #self.data = {'q_avg':np.array([self.tsp[uid].v.to_numpy() for uid in self.ts_uid])}
         self.data = {'q_avg': np.array([self._flatten_tsvct_v_2_numpy(ts_vct) for ts_vct in ts_vct_lst])}
 
+        self.static_vars = []  # TODO: make this a property
+
+    @property
+    def temporal_vars(self):
+        return list(self.data.keys())
+
     def get_closest_time(self, t_num):
         return self.t_ax[self._time_num_2_idx(t_num)]
 

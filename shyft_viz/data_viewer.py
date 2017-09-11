@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
+from matplotlib import dates as mdate
 from matplotlib.widgets import Slider, RadioButtons, CheckButtons, Button, Cursor
 from matplotlib.collections import PatchCollection
 import matplotlib.dates as mdates
@@ -147,6 +148,7 @@ class Viewer(object):
 
         self.add_plot()
         self.set_labels()
+
         #self.cbar[self.ds_active].set_visible(True)
 
         if data_ext_pt is None:
@@ -192,7 +194,9 @@ class Viewer(object):
         self.ax_plt.format_coord = self.format_coord
         divider = make_axes_locatable(self.ax_plt)
         cax = divider.append_axes("right", size="5%", pad=0.05)
+        print('here_viewer')
         for ds in self.ds_names:
+            print(ds)
             self.map[ds] = self.ax_plt.add_collection(PatchCollection(self.patches[ds], alpha=0.9))
             self.data = self.data_ext[ds].get_map(self.dist_var, self.map_fetching_lst[ds], self.t_ax[self.ti])
             self.map[ds].set_array(self.data)
@@ -502,6 +506,13 @@ class TsPlot(object):
         self.i = 1
         self.plt_mode = {'Plot_over': False, 'Re-plot': False}
         self.gs = gridspec.GridSpec(1, 2, width_ratios=[0.1, 0.9])  # , height_ratios=[2,1])
+        self.gs_plot_opt = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=self.gs[0, 0])
+
+    def add_click_button(self, ax_button, label, func):
+        axcolor = 'lightgoldenrodyellow'
+        button = Button(ax_button, label, color=axcolor, hovercolor='0.975')
+        button.on_clicked(func)
+        return button
 
     def add_check_button(self, but_ax1, title, labels, vals, func):
         axcolor = 'lightgoldenrodyellow'
@@ -524,9 +535,11 @@ class TsPlot(object):
     def init_plot(self, t, v, labels, units, prop):
         self.fig = plt.figure(figsize=(15, 6))#, (15, 6))  # , facecolor='white')
         self.ax = self.fig.add_subplot(self.gs[0, 1])
-        ax_options_1 = self.fig.add_subplot(self.gs[0, 0])
+        ax_options_1 = self.fig.add_subplot(self.gs_plot_opt[0, 0]) # self.gs[0, 0])
         self.option_btn = self.add_check_button(ax_options_1, 'Options', list(self.plt_mode.keys()),
                                                 list(self.plt_mode.values()), self.OnPltModeBtnClk)
+        ax_options_2 = self.fig.add_subplot(self.gs_plot_opt[1, 0])
+        self.comp_btn = self.add_click_button(ax_options_2, 'Compare', self.OnCompare)
         self.fig.canvas.mpl_connect('close_event', self.handle_close)
         #plt.setp([a.get_xticklabels() for a in self.fig.axes[:-1]], visible=False)
         #self.subplot_autofmt_xdate(self.fig.axes[-1])
@@ -539,6 +552,9 @@ class TsPlot(object):
         #self.multi = MultiCursor(self.fig.canvas, self.ax, color='r', lw=1)
         self.cursor = Cursor(self.ax, useblit=True, color='red', linewidth=2)
         #self.gs.tight_layout(self.fig)
+
+    def OnCompare(self, event):
+        ScatterPlot(self.ax)
 
     def plot(self,ax, t, v, kwargs):
         return ax.plot(t, v, **kwargs)[0]
@@ -668,5 +684,59 @@ class TsPlot(object):
 
     def subplot_autofmt_xdate(self, ax):
         plt.setp(ax.xaxis.get_majorticklabels(), rotation=70)
+
+
+class ScatterPlot(object):
+    def __init__(self, ts_ax):
+        lines = ts_ax.get_lines()
+        labels = [line.get_label() for line in lines]
+        is_obs = ['obs' in label for label in labels]
+        if any(is_obs):
+            obs_idx = is_obs.index(True)
+            sim_idx = is_obs.index(False)
+        else:
+            obs_idx = 0
+            sim_idx = 1
+        # line.get_xdata() - returns x in datetime
+        # line.get_data() - returns x & y where x is in datetime
+        # line.get_xydata() - returns [[x0,y0], [x1,y1], ...] where x is num
+        x_obs, y_obs = lines[obs_idx].get_data()
+        x_sim, y_sim = lines[sim_idx].get_data()
+
+        x_obs = mdate.date2num(x_obs)
+        x_sim = mdate.date2num(x_sim)
+
+        x_min, x_max = ts_ax.get_xlim()
+        in_zoom_idx = np.nonzero(((x_sim>x_min) & (x_sim<x_max) & (np.isfinite(y_sim))))[0]
+        x_sim_sel = x_sim[in_zoom_idx]
+        y_sim_sel = y_sim[in_zoom_idx]
+
+        #xsorted = np.argsort(obs_x)
+        #ypos = np.searchsorted(obs_x[xsorted], sim_x)
+        #indices = xsorted[ypos]
+
+        pos_obs = np.searchsorted(x_obs, x_sim_sel)  # assumes that all every element of x_sim_sel is in x_obs
+
+        y_obs_sel = y_obs[pos_obs]
+
+        self.fig = plt.figure() # figsize=(15, 6))  # , (15, 6))  # , facecolor='white')
+        self.ax_plot = self.fig.add_subplot(211)
+        self.ax_plot.scatter(y_obs_sel, y_sim_sel)
+
+        lims = [
+            np.min([self.ax_plot.get_xlim(), self.ax_plot.get_ylim()]),  # min of both axes
+            np.max([self.ax_plot.get_xlim(), self.ax_plot.get_ylim()]),  # max of both axes
+        ]
+        self.ax_plot.plot(lims, lims, 'k-', alpha=0.75, zorder=0) # identity line
+        self.ax_plot.set_aspect('equal')
+        self.ax_plot.set_xlim(lims)
+        self.ax_plot.set_ylim(lims)
+        self.ax_plot.set_xlabel(labels[obs_idx])
+        self.ax_plot.set_ylabel(labels[sim_idx])
+
+        self.ax_table = self.fig.add_subplot(212)
+        self.ax_table.axis('tight')
+        self.ax_table.axis('off')
+        self.table_stat = self.ax_table.table(cellText=[['Nash', '-', 0.9]], colLabels=['Stat name', 'unit', 'value'], loc='center')
 
 

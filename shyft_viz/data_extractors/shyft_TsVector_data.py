@@ -43,7 +43,7 @@ class TsVectorDataExtractor(object):
         return [ts.time(i) for i in range(ts.size())]
 
     def get_closest_time(self, t_num):
-        return self.t_ax_shyft.time(self.t_ax_shyft.index_of(t_num, 0))
+        return self.t_ax_shyft.time(self.t_ax_shyft.index_of(int(t_num), 0))
 
     def time_num_2_str(self, t_num):
         return self.cal.to_string(self.get_closest_time(t_num))

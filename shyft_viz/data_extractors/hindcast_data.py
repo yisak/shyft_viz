@@ -33,19 +33,27 @@ class HindcastDataExtractor(object):
         return np.searchsorted(self.t_ax, t_num)
 
     def _flatten_tsvct_t_2_numpy(self, vct):
-        arr_t = np.empty((vct.size(), vct[0].size() + 1))
-        for i in range(vct.size()):
-            arr_t[i, :-1] = [vct[i].time(j) for j in range(vct[i].size())]
-        arr_t[:, -1] = arr_t[:, -2]
-        return arr_t.flatten()
+        if vct[0].total_period().overlaps(vct[1].total_period()):
+            arr_t = np.empty((vct.size(), vct[0].size() + 1))
+            for i in range(vct.size()):
+                #arr_t[i, :-1] = [vct[i].time(j) for j in range(vct[i].size())]
+                arr_t[i, :-1] = vct[i].time_axis.time_points[0:vct[i].size()]
+            arr_t[:, -1] = arr_t[:, -2]
+            return arr_t.flatten()
+        else:
+            return np.concatenate([ts.time_axis.time_points[0:ts.size()] for ts in vct])
+
 
     def _flatten_tsvct_v_2_numpy(self, vct):
         # Plotting forecasts as one line
-        arr_v = np.empty((vct.size(), vct[0].size() + 1))
-        arr_v.fill(np.nan)
-        for i in range(vct.size()):
-            arr_v[i, :-1] = vct[i].values.to_numpy()
-        return arr_v.flatten()
+        if vct[0].total_period().overlaps(vct[1].total_period()):
+            arr_v = np.empty((vct.size(), vct[0].size() + 1))
+            arr_v.fill(np.nan)
+            for i in range(vct.size()):
+                arr_v[i, :-1] = vct[i].values.to_numpy()
+            return arr_v.flatten()
+        else:
+            return np.concatenate([ts.v.to_numpy() for ts in vct])
 
     def _flatten_tsvct_2_numpy(self, vct):
         # Plotting forecasts as one line
@@ -54,7 +62,8 @@ class HindcastDataExtractor(object):
         arr_t = np.empty(arr_v.shape)
         for i in range(vct.size()):
             arr_v[i, :-1] = vct[i].values.to_numpy()
-            arr_t[i, :-1] = [vct[i].time(j) for j in range(vct[i].size())]
+            #arr_t[i, :-1] = [vct[i].time(j) for j in range(vct[i].size())]
+            arr_t[i, :-1] = vct[i].time_axis.time_points[0:vct[i].size()]
         arr_t[:, -1] = arr_t[:, -2]
         #T = [datetime.utcfromtimestamp(t) for t in arr_t.flatten()]
         return arr_t.flatten(), arr_v.flatten()
@@ -63,7 +72,8 @@ class HindcastDataExtractor(object):
         return self.data[var_name][:, self._time_num_2_idx(t)]
 
     def get_ts(self, var_name, cat_id):
-        return self.t_ax_datetime, self.data[var_name][cat_id]
+        #return self.t_ax_datetime, self.data[var_name][cat_id]
+        return self.t_ax, self.data[var_name][cat_id]
 
     def get_geo_data(self, var_name, cat_id_lst_grp):
         pass

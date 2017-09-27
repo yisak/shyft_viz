@@ -678,6 +678,10 @@ class TsPlot(object):
             x_obs = mdate.num2epoch(mdate.date2num(x_obs))
             x_sim = mdate.num2epoch(mdate.date2num(x_sim))
         else:
+            err_msg = self._data_not_ok_for_comparison(self.data)
+            if err_msg:
+                print(err_msg)
+                return True
             labels = list(self.data.keys())
             is_obs = ['obs' in label for label in labels]
             if any(is_obs):
@@ -686,6 +690,8 @@ class TsPlot(object):
             else:
                 obs_idx = 0
                 sim_idx = 1
+                print("Could not identify which series is the reference using substring 'obs'."
+                      "{} will be assumed as the reference series.".format(labels[obs_idx]))
             obs_nm, sim_nm = labels[obs_idx], labels[sim_idx]
             x_obs, y_obs = self.data[obs_nm]['t'], self.data[obs_nm]['v']
             x_sim, y_sim = self.data[sim_nm]['t'], self.data[sim_nm]['v']
@@ -694,7 +700,15 @@ class TsPlot(object):
         y_min, y_max = self.ax.get_ylim()
         print(y_min, y_max)
         x_min, x_max = mdate.num2epoch([x_min, x_max])
-        ScatterPlot(x_sim, y_sim, sim_nm, x_obs, y_obs, obs_nm, x_min, x_max, y_min, y_max)
+        ScatterPlot(x_sim, y_sim, sim_nm, x_obs, y_obs, obs_nm, x_min, x_max, y_min, y_max, self.data[obs_nm]['unit'])
+
+    def _data_not_ok_for_comparison(self, data):
+        err = []
+        if len(data) != 2:
+            err.append('The number of timseries to compare should be 2.')
+        if len(set([v['unit'] for v in data.values()])) != 1:
+            err.append('The timseries to compare should have the same units.')
+        return '; '.join(err)
 
     def plot(self,ax, t, v, kwargs):
         return ax.plot(t, v, **kwargs)[0]
@@ -832,7 +846,7 @@ class TsPlot(object):
 
 
 class ScatterPlot(object):
-    def __init__(self, x_sim, y_sim, label_sim, x_obs, y_obs, label_obs, x_min, x_max, y_min, y_max):
+    def __init__(self, x_sim, y_sim, label_sim, x_obs, y_obs, label_obs, x_min, x_max, y_min, y_max, unit):
         in_zoom_idx = np.nonzero(((x_sim>=x_min) & (x_sim<=x_max) & (np.isfinite(y_sim))))[0]
         x_sim_sel = x_sim[in_zoom_idx]
         y_sim_sel = y_sim[in_zoom_idx]
@@ -880,14 +894,14 @@ class ScatterPlot(object):
 
         stats = [['Nash', '-', fmt(self.calc_nash_np(y_sim_sel, y_obs_sel))],
                  ['MAPE', '%', fmt(100.*self.calc_vol_err_avg_np(y_sim_sel, y_obs_sel))],
-                 ['Mean_sim', 'm3_per_sec', fmt(y_sim_sel.mean())],
-                 ['Mean_obs', 'm3_per_sec', fmt(y_obs_sel.mean())],
-                 ['Min_sim', 'm3_per_sec', fmt(y_sim_sel.min())],
-                 ['Min_obs', 'm3_per_sec', fmt(y_obs_sel.min())],
-                 ['Max_sim', 'm3_per_sec', fmt(y_sim_sel.max())],
-                 ['Max_obs', 'm3_per_sec', fmt(y_obs_sel.max())],
-                 ['Std_sim', 'm3_per_sec', fmt(np.std(y_sim_sel))],
-                 ['Std_obs', 'm3_per_sec', fmt(np.std(y_obs_sel))]]
+                 ['Mean_sim', unit, fmt(y_sim_sel.mean())],
+                 ['Mean_obs', unit, fmt(y_obs_sel.mean())],
+                 ['Min_sim', unit, fmt(y_sim_sel.min())],
+                 ['Min_obs', unit, fmt(y_obs_sel.min())],
+                 ['Max_sim', unit, fmt(y_sim_sel.max())],
+                 ['Max_obs', unit, fmt(y_obs_sel.max())],
+                 ['Std_sim', unit, fmt(np.std(y_sim_sel))],
+                 ['Std_obs', unit, fmt(np.std(y_obs_sel))]]
 
         self.table_stat = self.ax_table.table(cellText=stats, colLabels=['Stat name', 'unit', 'value'], loc='center')
         self.table_stat.auto_set_font_size(False)

@@ -12,14 +12,18 @@ class ArealDataExtractor(object):
         self.stack_nm = stack_names[rm.__class__.__name__]
         self.cells = rm.cells
         self.cal = api.Calendar()
-        self.t_ax_shyft = self.rm.time_axis
-        self.t_ax = np.array([self.t_ax_shyft.time(i) for i in range(self.t_ax_shyft.size())])
+        self.t_ax_shyft_full = self.rm.time_axis
+        self.t_ax_full = np.array([self.t_ax_shyft_full.time(i) for i in range(self.t_ax_shyft_full.size())])
         if period is not None:
             self.start_idx = self._time_num_2_idx(period.start)
             self.nb_pts = self._time_num_2_idx(period.end)-self.start_idx+1
+            self.t_ax_shyft = api.TimeAxisFixedDeltaT(self.t_ax_shyft_full.time(self.start_idx),self.t_ax_shyft_full.delta_t,self.nb_pts)
+            self.t_ax  = np.array([self.t_ax_shyft.time(i) for i in range(self.t_ax_shyft.size())])
         else:
             self.start_idx = 0
-            self.nb_pts = self.t_ax_shyft.size()
+            self.nb_pts = self.t_ax_shyft_full.size()
+            self.t_ax_shyft = self.t_ax_shyft_full
+            self.t_ax = self.t_ax_full
         self.inputs = {'prec': 'precipitation', 'temp': 'temperature', 'ws': 'wind_speed', 'rh': 'rel_hum',
                        'rad': 'radiation'}
         self.basic_outputs = {'q_avg': 'discharge'}
@@ -71,10 +75,15 @@ class ArealDataExtractor(object):
         return self.cal.to_string(self.get_closest_time(t_num))
 
     def _time_num_2_idx(self, t_num):
-        return self.t_ax_shyft.index_of(int(t_num))
+        if t_num < self.t_ax_shyft_full.time(0):
+            return 0
+        elif t_num > self.t_ax_shyft_full.time(self.t_ax_shyft_full.size()-1):
+            return self.t_ax_shyft_full.size()-1
+        else:
+            return self.t_ax_shyft_full.index_of(int(t_num))
 
     def get_closest_time(self, t_num):
-        return self.t_ax_shyft.time(self._time_num_2_idx(t_num))
+        return self.t_ax_shyft_full.time(self._time_num_2_idx(t_num))
 
 
 class CellDataExtractor(ArealDataExtractor):

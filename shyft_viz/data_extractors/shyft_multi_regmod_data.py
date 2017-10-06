@@ -6,13 +6,13 @@ from .shyft_regmod_data import CellDataExtractor, SubcatDataExtractor
 
 
 class DataExtractor(object):
-    def __init__(self, rm_lst, period=None, agg=False, catch_select=None, clip=False, catch_names=None, geom=None):
+    def __init__(self, rm_lst, periods, agg=False, catch_select=None, clip=False, catch_names=None, geom=None):
         if agg:
             self.cell_data_ext = [SubcatDataExtractor(rm, period=period, catch_select=catch_select, clip=clip, catch_names=catch_names, geom=geom)
-                                  for rm in rm_lst]
+                                  for rm, period in zip(rm_lst, periods)]
         else:
             self.cell_data_ext = [CellDataExtractor(rm, period=period, catch_select=catch_select, clip=clip, catch_names=catch_names, geom=geom)
-                                  for rm in rm_lst]
+                                  for rm, period in zip(rm_lst, periods)]
         self.ts_fetching_lst = self.cell_data_ext[0].ts_fetching_lst
         self.map_fetching_lst = self.cell_data_ext[0].map_fetching_lst
         self.n = [len(data_ext.t_ax) for data_ext in self.cell_data_ext]
@@ -24,7 +24,7 @@ class DataExtractor(object):
         self.temporal_vars = self.cell_data_ext[0].temporal_vars
         self.static_vars = self.cell_data_ext[0].static_vars
         self.cal = api.Calendar()
-        self.t_ax_shyft = api.Timeaxis(self.cell_data_ext[0].t_ax_shyft.start, self.cell_data_ext[0].t_ax_shyft.delta_t, sum(self.n))
+        self.t_ax_shyft = api.TimeAxisFixedDeltaT(self.cell_data_ext[0].t_ax_shyft.start, self.cell_data_ext[0].t_ax_shyft.delta_t, sum(self.n))
         self.t_ax = np.array([self.t_ax_shyft.time(i) for i in range(self.t_ax_shyft.size())])
 
     def time_num_2_str(self, t_num):

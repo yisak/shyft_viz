@@ -4,15 +4,21 @@ import numpy as np
 from shyft import api
 
 class TsVectorDataExtractor(object):
-    def __init__(self, ts_vct, catch_names, geom, preprocess=False):
+    def __init__(self, ts_vct_dict, catch_names, geom, preprocess=False):
+        var_nm_map = {'precipitation': 'prec', 'temperature': 'temp', 'wind_speed': 'ws', 'relative_humidity': 'rh',
+                      'radiation': 'rad', 'q_avg': 'q_avg'}
+        ts_vct_dict = {var_nm_map[k]: v for k, v in ts_vct_dict.items()}
         #ts_vct can be a list of Ts or TsVector
-        if not isinstance(ts_vct, api.TsVector):
-            shyft_ts_vct = api.TsVector()
-            [shyft_ts_vct.append(ts) for ts in ts_vct]
-            ts_vct = shyft_ts_vct
+        for nm, ts_vct in ts_vct_dict.items():
+            if not isinstance(ts_vct, api.TsVector):
+                shyft_ts_vct = api.TsVector()
+                [shyft_ts_vct.append(ts) for ts in ts_vct]
+                #ts_vct = shyft_ts_vct
+                ts_vct_dict[nm] = shyft_ts_vct
         # ---Attributes expected by Viewer---
-        self.var_units = {'q_avg': 'm3_per_sec'}
-        self.t_ax = self._flatten_tsvct_t_2_numpy(ts_vct)
+        self._var_units = {'q_avg': 'm3_per_sec', 'prec': 'mm_per_hr', 'temp': 'degree_celcius'}
+        #self.t_ax = self._flatten_tsvct_t_2_numpy(ts_vct)
+        self.t_ax = self._flatten_tsvct_t_2_numpy(ts_vct_dict[list(ts_vct_dict)[0]])
         self.catch_names = catch_names
         self.map_fetching_lst = list(range(len(self.catch_names)))
         self.ts_fetching_lst = list(range(len(self.catch_names)))
@@ -23,14 +29,21 @@ class TsVectorDataExtractor(object):
         self.t_ax_shyft = api.TimeAxis(api.UtcTimeVector(self.t_ax.tolist()))
 
         if preprocess:
-            ts_t, ts_v = zip(*[(ts.time_axis.time_points[0:ts.size()], ts.v.to_numpy()) for ts in ts_vct])
-            self.data = {'q_avg': {'t': ts_t, 'v': ts_v}}
+            #ts_t, ts_v = zip(*[(ts.time_axis.time_points[0:ts.size()], ts.v.to_numpy()) for ts in ts_vct])
+            ts_t = [ts.time_axis.time_points[0:ts.size()] for ts in ts_vct_dict[list(ts_vct_dict)[0]]]
+            #self.data = {'q_avg': {'t': ts_t, 'v': ts_v}}
+            self.data = {k: {'t': ts_t, 'v': [ts.v.to_numpy() for ts in ts_vct]} for k, ts_vct in ts_vct_dict.items()}
             self.get_ts = self._get_ts_from_preprocessed
         else:
-            self.data = {'q_avg': ts_vct}
+            #self.data = {'q_avg': ts_vct}
+            self.data = ts_vct_dict
             self.get_ts = self._get_ts_from_tsvct
 
         self.static_vars = []  # TODO: make this a property
+
+    @property
+    def var_units(self):
+        return {k: self._var_units[k] for k in self.data}
 
     @property
     def temporal_vars(self):

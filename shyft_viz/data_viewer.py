@@ -447,8 +447,11 @@ class Viewer(object):
         if self.plt_mode_active == 'Custom_Plot' and self.ds_active not in self.custom_plt[self.custom_plt_active].keys():
             return True
         tb = self.fig.canvas.manager.toolbar
+        if tb.mode != '':
+            print('You clicked on something, but toolbar is in mode pan/zoom.')
+            return True
         #if not self.plt_mode_active == 'Plot_Source' and tb.mode == '':
-        if self.plt_mode_active in ['Plot_dist_dataset', 'Add_dist_ds_to_rec', 'Del_dist_ds_from_rec', 'Custom_Plot'] and tb.mode == '':
+        if self.plt_mode_active in ['Plot_dist_dataset', 'Add_dist_ds_to_rec', 'Del_dist_ds_from_rec', 'Custom_Plot']:
             x = event.xdata
             y = event.ydata
             catchind = {self.ds_active: self.which_catch(x, y, self.ds_active)}
@@ -532,7 +535,10 @@ class Viewer(object):
 
     def on_pick(self, event):
         tb = self.fig.canvas.manager.toolbar
-        if self.plt_mode_active in ['Plot_Source', 'Add_pt_ds_to_rec', 'Del_pt_ds_from_rec'] and tb.mode == '':
+        if tb.mode != '':
+            print('You clicked on something, but toolbar is in mode pan/zoom.')
+            return True
+        if self.plt_mode_active in ['Plot_Source', 'Add_pt_ds_to_rec', 'Del_pt_ds_from_rec']:
 
             # if event.artist!=self.overview: return True
 

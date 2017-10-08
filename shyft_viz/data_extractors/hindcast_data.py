@@ -3,10 +3,14 @@ from datetime import datetime
 from pytz import utc
 
 class HindcastDataExtractor(object):
-    def __init__(self, ts_vct_lst, catch_names, geom):
+    def __init__(self, dict_w_ts_vct_lst, catch_names, geom):
+        var_nm_map = {'precipitation': 'prec', 'temperature': 'temp', 'wind_speed': 'ws', 'relative_humidity': 'rh',
+                           'radiation': 'rad', 'q_avg': 'q_avg'}
+        dict_w_ts_vct_lst = {var_nm_map[k]: v for k, v in dict_w_ts_vct_lst.items()}
         # ---Attributes expected by Viewer---
-        self.var_units = {'q_avg': 'm3_per_sec'}
-        self.t_ax = self._flatten_tsvct_t_2_numpy(ts_vct_lst[0])
+        self._var_units = {'q_avg': 'm3_per_sec', 'prec': 'mm_per_hr', 'temp': 'degree_celcius'}
+        #self.t_ax = self._flatten_tsvct_t_2_numpy(ts_vct_lst[0])
+        self.t_ax = self._flatten_tsvct_t_2_numpy(dict_w_ts_vct_lst[list(dict_w_ts_vct_lst)[0]][0])
         self.catch_names = catch_names
         self.map_fetching_lst = list(range(len(self.catch_names)))
         self.ts_fetching_lst = list(range(len(self.catch_names)))
@@ -15,9 +19,14 @@ class HindcastDataExtractor(object):
 
         self.t_ax_datetime = [datetime.utcfromtimestamp(t).replace(tzinfo=utc) for t in self.t_ax]
         #self.data = {'q_avg':np.array([self.tsp[uid].v.to_numpy() for uid in self.ts_uid])}
-        self.data = {'q_avg': np.array([self._flatten_tsvct_v_2_numpy(ts_vct) for ts_vct in ts_vct_lst])}
+        #self.data = {'q_avg': np.array([self._flatten_tsvct_v_2_numpy(ts_vct) for ts_vct in ts_vct_lst])}
+        self.data = {k: np.array([self._flatten_tsvct_v_2_numpy(ts_vct) for ts_vct in ts_vct_lst]) for k, ts_vct_lst in dict_w_ts_vct_lst.items()}
 
         self.static_vars = []  # TODO: make this a property
+
+    @property
+    def var_units(self):
+        return {k: self._var_units[k] for k in self.data}
 
     @property
     def temporal_vars(self):

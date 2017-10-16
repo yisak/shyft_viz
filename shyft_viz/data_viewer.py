@@ -37,24 +37,66 @@ def plot_background(ax, f_path):
     ax.imshow(np.rollaxis(elevation, 0, 3), cmap='gist_earth', extent=[x0, x1, y1, y0])  # all bands
 
 
+class AnnoteFinder(object):
+    def __init__(self, xdata, ydata, annotes, ax):
+        self.x = xdata
+        self.y = ydata
+        self.annotes = annotes
+        self.ax = ax
+        self.drawnAnnotations = {}
+        self.links = []
+
+    def __call__(self, event):
+        tb = self.ax.figure.canvas.manager.toolbar
+        if tb.mode == '': # event.inaxes:
+            if not len(event.ind): return True
+            ind = event.ind
+            distances = np.hypot(event.mouseevent.xdata - np.take(self.x, ind), event.mouseevent.ydata - np.take(self.y, ind))
+            indmin = distances.argmin()
+            ptind = event.ind[indmin]
+            self.drawAnnote(event.mouseevent.inaxes, self.x[ptind], self.y[ptind], self.annotes[ptind])
+            for l in self.links:
+                l.drawSpecificAnnote(self.annotes[ptind])
+
+    def drawAnnote(self, ax, x, y, annote):
+        if (x, y) in self.drawnAnnotations:
+            markers = self.drawnAnnotations[(x, y)]
+            for m in markers:
+                m.set_visible(not m.get_visible())
+            self.ax.figure.canvas.draw_idle()
+        else:
+            t = ax.text(x, y, " - %s" % (annote),)
+            m = ax.scatter([x], [y], marker='d', c='r', zorder=100)
+            self.drawnAnnotations[(x, y)] = (t, m)
+            self.ax.figure.canvas.draw_idle()
+
+    def drawSpecificAnnote(self, annote):
+        annotesToDraw = [(x, y, a) for x, y, a in zip(self.xdata, self.ydata, self.annotes) if a == annote]
+        for x, y, a in annotesToDraw:
+            self.drawAnnote(self.ax, x, y, a)
+
+
 class Viewer(object):
     def __init__(self, data_ext, temporal_vars, static_vars, custom_plt, time_marker=None, background_img=None, foreground_patches=None,
                  data_ext_pt=None, default_var=None, default_ds=None, default_pt_var=None, default_pt_ds=None):
         # Set-up Dist dataset
-        self.data_ext = {k: v for k, v in data_ext.items()}
-        self.map_fetching_lst = {k: v.map_fetching_lst for k, v in data_ext.items()}
-        self.ts_fetching_lst = {k: v.ts_fetching_lst for k, v in data_ext.items()}
-        self.patches = {k: v.geom.patches for k, v in data_ext.items()}
-        self.polys = {k: v.geom.polys for k, v in data_ext.items()}
-        self.nb_catch = {k: len(v.geom.polys) for k, v in data_ext.items()}
-        self.catch_nms = {k: v.catch_names for k, v in data_ext.items()}
-        self.var_units = {k: v.var_units for k, v in data_ext.items()}
-        self.dist_vars = list(set([var for v in data_ext.values() for var in v.temporal_vars if var in temporal_vars]))
-        self.geo_data = list(set([var for v in data_ext.values() for var in v.static_vars if var in static_vars]))
+        #self.data_ext = {k: v for k, v in data_ext.items()}
+        self.data_ext = {k: v for k, v in data_ext.items() if any(i in temporal_vars for i in v.temporal_vars) or any(j in static_vars for j in v.static_vars)}
+        self.map_fetching_lst = {k: v.map_fetching_lst for k, v in self.data_ext.items()}
+        self.ts_fetching_lst = {k: v.ts_fetching_lst for k, v in self.data_ext.items()}
+        self.patches = {k: v.geom.patches for k, v in self.data_ext.items()}
+        self.polys = {k: v.geom.polys for k, v in self.data_ext.items()}
+        self.nb_catch = {k: len(v.geom.polys) for k, v in self.data_ext.items()}
+        self.catch_nms = {k: v.catch_names for k, v in self.data_ext.items()}
+        self.var_units = {k: v.var_units for k, v in self.data_ext.items()}
+        self.dist_vars = list(set([var for v in self.data_ext.values() for var in v.temporal_vars if var in temporal_vars]))
+        self.dist_vars_pr_ds = {k: [var for var in v.temporal_vars if var in temporal_vars] for k, v in
+                             self.data_ext.items()}
+        self.geo_data = list(set([var for v in self.data_ext.values() for var in v.static_vars if var in static_vars]))
         # -Just picking the value for one of the datasets for now-
-        bbox = {k: v.geom.bbox for k, v in data_ext.items()}
+        bbox = {k: v.geom.bbox for k, v in self.data_ext.items()}
         self.bbox = list(bbox.values())[0]
-        t_ax = {k: v.t_ax for k, v in data_ext.items()}
+        t_ax = {k: v.t_ax for k, v in self.data_ext.items()}
         if len(t_ax) > 1:
             self.t_ax = np.sort(np.unique(np.concatenate([t_arr for t_arr in t_ax.values()])))
         else:
@@ -62,13 +104,13 @@ class Viewer(object):
         self.t_min, self.t_max = self.t_ax[0], self.t_ax[-1]
         self.max_ti = len(self.t_ax)-1
 
-        self.ds_names = list(data_ext.keys())
+        self.ds_names = list(self.data_ext.keys())
         self.ds_active = default_ds
         if default_ds is None:
             self.ds_active = self.ds_names[0]
 
-        self.map = {k: None for k in data_ext}
-        self.cbar = {k: None for k in data_ext}
+        self.map = {k: None for k in self.data_ext}
+        self.cbar = {k: None for k in self.data_ext}
 
         self.data_lim = {'temp': [-20., 40.], 'swe': [0., 500], 'q_avg': [0., 500], 'rad': [0., 1000.],
                          'prec': [0., 50.],
@@ -83,16 +125,17 @@ class Viewer(object):
 
         # Set-up Point dataset
         if data_ext_pt is not None:
-            self.data_ext_pt = data_ext_pt  # {k: v for k, v in data_ext_pt.items()}
-            self.var_units_pt = {k: v.var_units for k, v in data_ext_pt.items()}
-            self.nb_pts = {k: v.nb_pts for k, v in data_ext_pt.items()}
-            self.pt_nms = {k: v.names for k, v in data_ext_pt.items()}
-            self.pt_coord = {k: v.coord for k, v in data_ext_pt.items()}
+            self.data_ext_pt = {k: v for k, v in data_ext_pt.items() if any(i in temporal_vars for i in v.temporal_vars)}
+            self.var_units_pt = {k: v.var_units for k, v in self.data_ext_pt.items()}
+            self.nb_pts = {k: v.nb_pts for k, v in self.data_ext_pt.items()}
+            self.pt_nms = {k: v.names for k, v in self.data_ext_pt.items()}
+            self.pt_coord = {k: v.coord for k, v in self.data_ext_pt.items()}
 
-            #all_pt_vars = list(set().union(*[v.temporal_vars for v in data_ext_pt.values()]))
+            #all_pt_vars = list(set().union(*[v.temporal_vars for v in self.data_ext_pt.values()]))
             #self.pt_vars = [var for var in temporal_vars if var in all_pt_vars]
-            self.pt_vars = list(set([var for v in data_ext_pt.values() for var in v.temporal_vars if var in temporal_vars]))
-            self.ds_names_pt = list(data_ext_pt.keys())
+            self.pt_vars_pr_ds = {k: [var for var in v.temporal_vars if var in temporal_vars] for k, v in self.data_ext_pt.items()}
+            self.pt_vars = list(set([var for v in self.data_ext_pt.values() for var in v.temporal_vars if var in temporal_vars]))
+            self.ds_names_pt = list(self.data_ext_pt.keys())
 
             self.ds_active_pt = default_pt_ds
             if default_pt_ds is None:
@@ -105,10 +148,8 @@ class Viewer(object):
 
         self.tsplots = []
 
-        #self.plt_mode = {'Plot_Source': False, 'Custom_Plot': True}
-        #plt_mode_label = list(self.plt_mode.keys())
+
         plt_mode_label = ['Plot_dist_dataset', 'Add_dist_ds_to_rec', 'Del_dist_ds_from_rec', 'Custom_Plot']
-        #plt_mode_val = [self.plt_mode[k] for k in plt_mode_label]
         self.custom_plt = custom_plt
         self.custom_plt_types = list(self.custom_plt.keys())
         self.custom_plt_active = self.custom_plt_types[0]
@@ -132,7 +173,7 @@ class Viewer(object):
         ax_map_var_slect = self.fig.add_subplot(gs_var_select[1, 0])
 
         if data_ext_pt is not None:
-            plt_mode_label.extend(['Plot_Source', 'Add_pt_ds_to_rec', 'Del_pt_ds_from_rec'])
+            plt_mode_label.extend(['Plot_pt_dataset', 'Add_pt_ds_to_rec', 'Del_pt_ds_from_rec'])
             ax_pt_dataset_slect = self.fig.add_subplot(gs_var_select[2, 0])
             ax_pt_var_slect = self.fig.add_subplot(gs_var_select[3, 0])
             self.add_pt_plot()
@@ -157,16 +198,9 @@ class Viewer(object):
         if foreground_patches is not None:
             [self.ax_plt.add_collection(PatchCollection(p['patches'], **p['props'])) for p in foreground_patches]
 
-        #self.cbar[self.ds_active].set_visible(True)
-
-        # if data_ext_pt is None:
-        #     i = plt_mode_label.index('Plot_Source')
-        #     del plt_mode_label[i]
-            #del plt_mode_val[i]
         plt_mode_default = plt_mode_label[0]
         self.plt_mode_active = plt_mode_default
 
-        #self.option_btn = self.add_check_button(ax_options_1, 'Options', plt_mode_label, plt_mode_val, self.OnPltModeBtnClk)
         self.plt_mode_sel_btn = self.add_radio_button(ax_options_1, 'Timeseries Plt Options', plt_mode_label, self.OnPltModeBtnClk)
         self.plt_mode_sel_btn.set_active(plt_mode_label.index(plt_mode_default))
 
@@ -221,48 +255,51 @@ class Viewer(object):
         self.fig.canvas.draw()
 
     def OnDatasetSelect(self, label):
-        #dist_var = self.dist_var_sel_btn.value_selected
         if self.dist_var_sel_btn.value_selected not in self.var_units[label]:
-            print("Dataset '{}' does not contain Variable '{}'".format(label, self.dist_var_sel_btn.value_selected))
-            self.dataset_sel_btn.set_active(self.ds_names.index(self.ds_active))
-        else:
-            self.map[self.ds_active].set_visible(False)
-            self.map[label].set_visible(True)
-            self.ds_active = label
-            self.OnDistVarBtnClk(self.dist_var_sel_btn.value_selected)
-            #self.data = self.map[self.ds_active].get_array()
-            self.fig.canvas.draw()
+            print("Dist.Ds.Sel.: Dist. Dataset '{}' does not contain Variable '{}'".format(label, self.dist_var_sel_btn.value_selected))
+            dist_var_auto_sel = self.dist_vars_pr_ds[label][0]
+            self.dist_var_sel_btn.set_active(self.dist_vars.index(dist_var_auto_sel))
+            print("Dist.Ds.Sel.: Auto-selected Variable '{}'".format(dist_var_auto_sel))
+        self.map[self.ds_active].set_visible(False)
+        self.map[label].set_visible(True)
+        self.ds_active = label
+        self.fig.canvas.draw()
 
     def OnDistVarBtnClk(self, label):
         if label not in self.var_units[self.ds_active]:
-            print("Dataset '{}' does not contain Variable '{}'".format(self.ds_active,label))
-            self.dist_var_sel_btn.set_active(self.dist_vars.index(self.dist_var))
+            print("Dist.Var.Sel.: Dist. Dataset '{}' does not contain Variable '{}'".format(self.ds_active, label))
+            dist_ds_auto_sel = self.ds_names[[label in self.dist_vars_pr_ds[nm] for nm in self.ds_names].index(True)]
+            self.dataset_sel_btn.set_active(self.ds_names.index(dist_ds_auto_sel))
+            print("Dist.Var.Sel.:Auto-selected Dist. Dataset '{}'".format(dist_ds_auto_sel))
+
+        self.ax_plt.set_title(self.ax_plt.get_title().replace(self.dist_var, label), fontsize=12)
+        self.dist_var = label
+        if self.dist_var in self.geo_data:
+            self.data = self.data_ext[self.ds_active].get_geo_data(self.dist_var, self.map_fetching_lst[self.ds_active])
         else:
-            self.ax_plt.set_title(self.ax_plt.get_title().replace(self.dist_var, label), fontsize=12)
-            self.dist_var = label
-            #print(self.dist_var)
-            if self.dist_var in self.geo_data:
-                self.data = self.data_ext[self.ds_active].get_geo_data(self.dist_var, self.map_fetching_lst[self.ds_active])
-            else:
-                self.data = self.data_ext[self.ds_active].get_map(self.dist_var, self.map_fetching_lst[self.ds_active], self.t_ax[self.ti])
-            self.map[self.ds_active].set_array(self.data)
-            self.update_cbar_by_data_lim()
+            self.data = self.data_ext[self.ds_active].get_map(self.dist_var, self.map_fetching_lst[self.ds_active],
+                                                              self.t_ax[self.ti])
+        self.map[self.ds_active].set_array(self.data)
+        self.update_cbar_by_data_lim()
 
     def OnPtDatasetSelect(self, label):
         if self.pt_var_sel_btn.value_selected not in self.var_units_pt[label]:
-            print("Dataset '{}' does not contain Variable '{}'".format(label, self.pt_var_sel_btn.value_selected))
-            self.pt_dataset_sel_btn.set_active(self.ds_names_pt.index(self.ds_active_pt))
-        else:
-            self.ds_active_pt = label
-            self.OnPtVarBtnClk(self.pt_var_sel_btn.value_selected)
-            self.fig.canvas.draw()
+            print("Pt.Ds.Sel.: Pt. Dataset '{}' does not contain Variable '{}'".format(label, self.pt_var_sel_btn.value_selected))
+            pt_var_auto_sel = self.pt_vars_pr_ds[label][0]
+            self.pt_var_sel_btn.set_active(self.pt_vars.index(pt_var_auto_sel))
+            print("Pt.Ds.Sel.: Auto-selected Variable '{}'".format(pt_var_auto_sel))
+        self.ds_active_pt = label
+        self.fig.canvas.draw()
 
     def OnPtVarBtnClk(self, label):
         if label not in self.var_units_pt[self.ds_active_pt]:
-            print("Dataset '{}' does not contain Variable '{}'".format(self.ds_active_pt,label))
-            self.pt_var_sel_btn.set_active(self.pt_vars.index(self.pt_var))
-        else:
-            self.pt_var = label
+            print("Pt.Var.Sel.: Pt. Dataset '{}' does not contain Variable '{}'".format(self.ds_active_pt, label))
+            pt_ds_auto_sel = self.ds_names_pt[[label in self.pt_vars_pr_ds[nm] for nm in self.ds_names_pt].index(True)]
+            print('Pt.Var.Sel.: pt_ds_auto_sel',pt_ds_auto_sel)
+            print("Pt.Var.Sel.: Auto-selected Pt. Dataset '{}'".format(pt_ds_auto_sel))
+            self.pt_dataset_sel_btn.set_active(self.ds_names_pt.index(pt_ds_auto_sel))
+        self.pt_var = label
+
 
     def OnCustomPltBtnClk(self, label):
         self.custom_plt_active = label
@@ -538,7 +575,7 @@ class Viewer(object):
         if tb.mode != '':
             print('You clicked on something, but toolbar is in mode pan/zoom.')
             return True
-        if self.plt_mode_active in ['Plot_Source', 'Add_pt_ds_to_rec', 'Del_pt_ds_from_rec']:
+        if self.plt_mode_active in ['Plot_pt_dataset', 'Add_pt_ds_to_rec', 'Del_pt_ds_from_rec']:
 
             # if event.artist!=self.overview: return True
 
@@ -649,25 +686,17 @@ class TsPlot(object):
         ax_options_2 = self.fig.add_subplot(self.gs_plot_opt[1, 0])
         self.comp_btn = self.add_click_button(ax_options_2, 'Compare', self.OnCompare)
         self.fig.canvas.mpl_connect('close_event', self.handle_close)
-        #plt.setp([a.get_xticklabels() for a in self.fig.axes[:-1]], visible=False)
-        #self.subplot_autofmt_xdate(self.fig.axes[-1])
-        # self.subplot_autofmt_xdate(self.ax) # for multiple subplots
         self.fig.autofmt_xdate()  # for one subplot
-        #timeFmt = mdates.DateFormatter('%d.%m %H:%M')
-        #self.ax.xaxis.set_major_formatter(timeFmt)
         self.ax.xaxis_date()
-        #self.add_plot(t, v, labels, units, prop)
         self.add_plot(data_dict)
-        #self.multi = MultiCursor(self.fig.canvas, self.ax, color='r', lw=1)
         self.cursor = Cursor(self.ax, useblit=True, color='red', linewidth=2)
-        #self.gs.tight_layout(self.fig)
 
     def OnCompare(self, event):
         fetch_data_from_plot = False
         if fetch_data_from_plot:
             lines = self.ax.get_lines()
             labels = [line.get_label() for line in lines]
-            is_obs = ['obs' in label for label in labels]
+            is_obs = ['Obs' in label for label in labels]
             if any(is_obs):
                 obs_idx = is_obs.index(True)
                 sim_idx = is_obs.index(False)
@@ -689,7 +718,7 @@ class TsPlot(object):
                 print(err_msg)
                 return True
             labels = list(self.data.keys())
-            is_obs = ['obs' in label for label in labels]
+            is_obs = ['Obs' in label for label in labels]
             if any(is_obs):
                 obs_idx = is_obs.index(True)
                 sim_idx = is_obs.index(False)
@@ -711,15 +740,14 @@ class TsPlot(object):
     def _data_not_ok_for_comparison(self, data):
         err = []
         if len(data) != 2:
-            err.append('The number of timseries to compare should be 2.')
+            err.append('The number of timeseries to compare should be 2.')
         if len(set([v['unit'] for v in data.values()])) != 1:
-            err.append('The timseries to compare should have the same units.')
+            err.append('The timeseries to compare should have the same units.')
         return '; '.join(err)
 
     def plot(self,ax, t, v, kwargs):
         return ax.plot(t, v, **kwargs)[0]
 
-    # def add_plot(self, t, v, labels, units, prop):
     def add_plot(self, data_dict):
         labels = list(data_dict.keys())
         t_, v, units, prop = zip(*[[data_dict[nm]['t'], data_dict[nm]['v'],data_dict[nm]['unit'], data_dict[nm]['props']] for nm in labels])
@@ -865,21 +893,25 @@ class ScatterPlot(object):
 
         y_obs_sel = y_obs[pos_obs]
 
+        # Consider using rec arr
+        # data = np.rec.fromarrays((x_sim_sel, y_sim_sel, y_obs_sel), names='time, sim, obs')
 
         y_lim_mask = ((y_obs_sel>=y_min) & (y_obs_sel<=y_max))
         y_sim_sel = y_sim_sel[y_lim_mask]
         y_obs_sel = y_obs_sel[y_lim_mask]
+        x_sim_sel = x_sim_sel[y_lim_mask]
 
         if any([np.isnan(y_sim_sel).any(), np.isnan(y_obs_sel).any()]):
             valid_v_mask = ((np.isfinite(y_obs_sel)) & (np.isfinite(y_sim_sel)))
             y_sim_sel = y_sim_sel[valid_v_mask]
             y_obs_sel = y_obs_sel[valid_v_mask]
+            x_sim_sel = x_sim_sel[valid_v_mask]
 
         gs = gridspec.GridSpec(1, 2, width_ratios=[0.7, 0.3])
 
         self.fig = plt.figure() # figsize=(15, 6))  # , (15, 6))  # , facecolor='white')
         self.ax_plot = self.fig.add_subplot(gs[0,0]) #211)
-        self.ax_plot.scatter(y_obs_sel, y_sim_sel)
+        self.ax_plot.scatter(y_obs_sel, y_sim_sel, picker=True)
 
         lims = [
             np.min([self.ax_plot.get_xlim(), self.ax_plot.get_ylim()]),  # min of both axes
@@ -891,6 +923,10 @@ class ScatterPlot(object):
         self.ax_plot.set_ylim(lims)
         self.ax_plot.set_xlabel(label_obs)
         self.ax_plot.set_ylabel(label_sim)
+
+        af = AnnoteFinder(y_obs_sel, y_sim_sel,
+                          [datetime.utcfromtimestamp(d).strftime('%Y-%m-%d %H:%M') for d in x_sim_sel], self.ax_plot)
+        self.fig.canvas.mpl_connect('pick_event', af)
 
         self.ax_table = self.fig.add_subplot(gs[0,1]) # 212)
         #self.ax_table.axis('tight')

@@ -123,6 +123,8 @@ class Viewer(object):
 
         self.record = {}
 
+        self.ts_name_separator = '#'
+
         # Set-up Point dataset
         if data_ext_pt is not None:
             self.data_ext_pt = {k: v for k, v in data_ext_pt.items() if any(i in temporal_vars for i in v.temporal_vars)}
@@ -501,7 +503,7 @@ class Viewer(object):
             y = event.ydata
             catchind = {self.ds_active: self.which_catch(x, y, self.ds_active)}
             if catchind[self.ds_active] is None: return True
-            unique_names = [self.ds_active + '-' + self.dist_var + '-' + self.catch_nms[self.ds_active][catchind[self.ds_active]]]
+            unique_names = [self.ts_name_separator.join([self.ds_active, self.dist_var, self.catch_nms[self.ds_active][catchind[self.ds_active]]])]
             if self.plt_mode_active == 'Add_dist_ds_to_rec':
                 if not self.is_data_in_record(unique_names[0]):
                     if not self._is_var_static(self.dist_var):
@@ -534,7 +536,7 @@ class Viewer(object):
                     catchind.update({k: v for k, v in catchind_.items() if v is not None})
                     valid_ds = list(catchind.keys())
                     dist_vars = self.custom_plt[self.custom_plt_active]
-                    unique_names = [ds_active + '-' + dist_var + '-' + self.catch_nms[ds_active][catchind[ds_active]]
+                    unique_names = [self.ts_name_separator.join([ds_active, dist_var, self.catch_nms[ds_active][catchind[ds_active]]])
                                     for ds_active in valid_ds for dist_var in dist_vars [ds_active]]
                 else:
                     if not self._is_var_static(self.dist_var):
@@ -599,7 +601,7 @@ class Viewer(object):
             catchind = event.ind[indmin]
 
             self.lastind = catchind
-            unique_names = [self.ds_active_pt + '_' + self.pt_var + '_' + self.pt_nms[self.ds_active_pt][catchind]]
+            unique_names = [self.ts_name_separator.join([self.ds_active_pt, self.pt_var, self.pt_nms[self.ds_active_pt][catchind]])]
 
             if self.plt_mode_active == 'Add_pt_ds_to_rec':
                 if not self.is_data_in_record(unique_names[0]):

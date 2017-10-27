@@ -143,6 +143,7 @@ class Viewer(object):
             self.pt_var = default_pt_var
             if default_pt_var is None:
                 self.pt_var = self.pt_vars[0]
+            self.map_pt = {k: None for k in self.data_ext_pt}
 
         self.time_marker = datetime.utcfromtimestamp(time_marker) if time_marker is not None else time_marker
 
@@ -247,8 +248,13 @@ class Viewer(object):
             self.map[ds].set_visible(False)
 
     def add_pt_plot(self):
-        self.ax_plt.plot(self.pt_coord[self.ds_active_pt][:, 0], self.pt_coord[self.ds_active_pt][:, 1], marker='o', ls='None', ms=8, mfc='none',
-                        mec='r', mew=2, picker=5)
+        # self.map_pt = self.ax_plt.plot(self.pt_coord[self.ds_active_pt][:, 0], self.pt_coord[self.ds_active_pt][:, 1], marker='o', ls='None', ms=8, mfc='none',
+        #                 mec='r', mew=2, picker=5)
+        for ds in self.ds_names_pt:
+            self.map_pt[ds], = self.ax_plt.plot(self.pt_coord[ds][:, 0], self.pt_coord[ds][:, 1],
+                                           marker='o', ls='None', ms=8, mfc='none',
+                                           mec='r', mew=2, picker=5)
+            self.map_pt[ds].set_visible(False)
 
     def update_cbar(self, event):
         self.map[self.ds_active].set_clim([self.slidermin.val, self.slidermax.val])
@@ -288,6 +294,8 @@ class Viewer(object):
             pt_var_auto_sel = self.pt_vars_pr_ds[label][0]
             self.pt_var_sel_btn.set_active(self.pt_vars.index(pt_var_auto_sel))
             print("Pt.Ds.Sel.: Auto-selected Variable '{}'".format(pt_var_auto_sel))
+        self.map_pt[self.ds_active_pt].set_visible(False)
+        self.map_pt[label].set_visible(True)
         self.ds_active_pt = label
         self.fig.canvas.draw()
 

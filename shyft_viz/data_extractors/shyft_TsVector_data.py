@@ -16,7 +16,7 @@ class TsVectorDataExtractor(object):
                 #ts_vct = shyft_ts_vct
                 ts_vct_dict[nm] = shyft_ts_vct
         # ---Attributes expected by Viewer---
-        self._var_units = {'q_avg': 'm3_per_sec', 'prec': 'mm_per_hr', 'temp': 'degree_celcius'}
+        self._var_units = {'q_avg': 'm3_per_sec', 'prec': 'mm_per_hr', 'temp': 'degree_celsius'}
         #self.t_ax = self._flatten_tsvct_t_2_numpy(ts_vct)
         self.t_ax = self._flatten_tsvct_t_2_numpy(ts_vct_dict[list(ts_vct_dict)[0]])
         self.catch_names = catch_names

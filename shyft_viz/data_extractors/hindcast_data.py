@@ -42,7 +42,7 @@ class HindcastDataExtractor(object):
         return np.searchsorted(self.t_ax, t_num)
 
     def _flatten_tsvct_t_2_numpy(self, vct):
-        if vct[0].total_period().overlaps(vct[1].total_period()):
+        if vct[0].total_period().overlaps(vct[1].total_period()) and vct[0].size() != 1:
             arr_t = np.empty((vct.size(), vct[0].size() + 1))
             for i in range(vct.size()):
                 #arr_t[i, :-1] = [vct[i].time(j) for j in range(vct[i].size())]
@@ -55,7 +55,7 @@ class HindcastDataExtractor(object):
 
     def _flatten_tsvct_v_2_numpy(self, vct):
         # Plotting forecasts as one line
-        if vct[0].total_period().overlaps(vct[1].total_period()):
+        if vct[0].total_period().overlaps(vct[1].total_period()) and vct[0].size() != 1:
             arr_v = np.empty((vct.size(), vct[0].size() + 1))
             arr_v.fill(np.nan)
             for i in range(vct.size()):

@@ -6,13 +6,24 @@ from ..geom_preps.shyft_cell_geom import CellViewerPrep, SubcatViewerPrep
 
 
 class ArealDataExtractor(object):
-    def __init__(self, rm):
+    def __init__(self, rm, period=None):
         self.rm = rm
         stack_names = {'PTHSKModel':'pthsk','PTGSKModel':'ptgsk','PTSSKModel':'ptssk','PTHSKOptModel':'pthsk','PTGSKOptModel':'ptgsk','PTSSKOptModel':'ptssk'}
         self.stack_nm = stack_names[rm.__class__.__name__]
         self.cells = rm.cells
         self.cal = api.Calendar()
-        self.t_ax = self.rm.time_axis
+        self.t_ax_shyft_full = self.rm.time_axis
+        self.t_ax_full = np.array([self.t_ax_shyft_full.time(i) for i in range(self.t_ax_shyft_full.size())])
+        if period is not None:
+            self.start_idx = self._time_num_2_idx(period.start)
+            self.nb_pts = self._time_num_2_idx(period.end)-self.start_idx+1
+            self.t_ax_shyft = api.TimeAxisFixedDeltaT(self.t_ax_shyft_full.time(self.start_idx),self.t_ax_shyft_full.delta_t,self.nb_pts)
+            self.t_ax  = np.array([self.t_ax_shyft.time(i) for i in range(self.t_ax_shyft.size())])
+        else:
+            self.start_idx = 0
+            self.nb_pts = self.t_ax_shyft_full.size()
+            self.t_ax_shyft = self.t_ax_shyft_full
+            self.t_ax = self.t_ax_full
         self.inputs = {'prec': 'precipitation', 'temp': 'temperature', 'ws': 'wind_speed', 'rh': 'rel_hum',
                        'rad': 'radiation'}
         self.basic_outputs = {'q_avg': 'discharge'}
@@ -41,8 +52,10 @@ class ArealDataExtractor(object):
                         }
         u = ['degree_celsius', 'mm', 'm3_per_sec', 'mm_per_hr', 'W_per_m2', 'm_per_sec', 'fraction [0-1]', 'm']
         self.var_units = {'prec': u[3], 'temp': u[0], 'swe': u[1], 'q_avg': u[2], 'rad': u[4], 'ws': u[5], 'rh': u[6],
-                          'elev': u[7]}
+                          'z': u[7]}
         self.geo_attr = ['z', 'gf', 'lf', 'rf', 'ff']
+        self.temporal_vars = ['prec', 'temp', 'swe', 'q_avg', 'rad', 'ws', 'rh']  # TODO: make this a property
+        self.static_vars = ['z']  # TODO: make this a property
         geo_attr_all = ['x', 'y', 'z', 'area', 'c_id', 'rsf', 'gf', 'lf', 'rf', 'ff', 'uf']
         self.cell_geo_data = np.rec.fromrecords(self.cells.geo_cell_data_vector(self.cells).to_numpy().reshape(
             len(self.cells), len(geo_attr_all)),names=','.join(geo_attr_all))
@@ -56,21 +69,33 @@ class ArealDataExtractor(object):
         self._ts_map_ext_methods.update({k: getattr(self.rm.statistics, v) for k, v in self.basic_outputs.items()})
 
         self._ts_map_ext_methods.update({k: getattr(getattr(self.rm, output_grp), v) for output_grp in self.outputs[self.stack_nm]
-                                         for k, v in self.outputs[self.stack_nm][output_grp].items()})
+                                         for k, v in self.outputs[self.stack_nm][output_grp].items() if hasattr(self.rm, output_grp)})
 
-    def time_num_2_str(self, ti):
-        return self.cal.to_string(self.t_ax.time(ti))
+    def time_num_2_str(self, t_num):
+        return self.cal.to_string(self.get_closest_time(t_num))
+
+    def _time_num_2_idx(self, t_num):
+        if t_num < self.t_ax_shyft_full.time(0):
+            return 0
+        elif t_num > self.t_ax_shyft_full.time(self.t_ax_shyft_full.size()-1):
+            return self.t_ax_shyft_full.size()-1
+        else:
+            return self.t_ax_shyft_full.index_of(int(t_num))
+
+    def get_closest_time(self, t_num):
+        return self.t_ax_shyft_full.time(self._time_num_2_idx(t_num))
 
 
 class CellDataExtractor(ArealDataExtractor):
-    def __init__(self, rm, catch_select=None, clip=False, catch_names=None, geom=None):
-        super().__init__(rm)
+    def __init__(self, rm, period=None, catch_select=None, clip=False, catch_names=None, geom=None):
+        super().__init__(rm, period=period)
 
         self.responses = {'ptgsk':
                               {'q_avg': 'avg_discharge', 'pet': 'pe_output', 'aet': 'ae_output', 'sout': 'snow_outflow',
                                 'swe': 'snow_swe', 'sca': 'snow_sca'},
                           'ptssk':
-                              {'q_avg': 'avg_discharge', 'pet': 'pe_output', 'aet': 'ae_output', 'sout': 'snow_outflow', 'glacier_melt':'glacier_melt','snow_total_stored_water':'snow_total_stored_water'},
+                              {'q_avg': 'avg_discharge', 'pet': 'pe_output', 'aet': 'ae_output', 'sout': 'snow_outflow',
+                               'glacier_melt':'glacier_melt','snow_total_stored_water':'snow_total_stored_water'},
                           'pthsk':
                               {'q_avg': 'avg_discharge', 'pet': 'pe_output', 'aet': 'ae_output', 'sout': 'snow_outflow'}
                           }
@@ -105,21 +130,24 @@ class CellDataExtractor(ArealDataExtractor):
         self._ts_ext_methods.update({k: lambda cell, v=v: getattr(cell.sc, v) for k, v in self.states[self.stack_nm].items()})
 
     def get_map(self, var_name, cat_id_lst, t):
-        return self._ts_map_ext_methods[var_name](cat_id_lst, t).to_numpy()
+        return self._ts_map_ext_methods[var_name](cat_id_lst, self._time_num_2_idx(t)).to_numpy()
 
     def get_ts(self, var_name, cell_idx):
-        if (self.stack_nm  in ['ptssk','pthsk'] and var_name in ['swe']):
-            return self._ts_ext_methods[var_name](self.cells[int(cell_idx)]).v.to_numpy()[0:-1]
-        else:
-            return self._ts_ext_methods[var_name](self.cells[int(cell_idx)]).v.to_numpy()
+        # if (self.stack_nm  in ['ptssk','pthsk'] and var_name in ['swe']):
+        #     return self._ts_ext_methods[var_name](self.cells[int(cell_idx)]).v.to_numpy()[0:-1]
+        # else:
+        #     return self._ts_ext_methods[var_name](self.cells[int(cell_idx)]).v.to_numpy()
+        ts = self._ts_ext_methods[var_name](self.cells[int(cell_idx)])
+        #return ts.time_axis.time_points[0:ts.size()], ts.v.to_numpy()
+        return ts.time_axis.time_points[self.start_idx:self.start_idx+self.nb_pts], ts.v.to_numpy()[self.start_idx:self.start_idx+self.nb_pts]
 
     def get_geo_data(self, var_name, cat_id_lst):
         return self.cell_geo_data[var_name][np.in1d(self.cid,cat_id_lst)]
 
 
 class SubcatDataExtractor(ArealDataExtractor):
-    def __init__(self, rm, catch_select=None, clip=False, catch_names=None, geom=None):
-        super().__init__(rm)
+    def __init__(self, rm, period=None, catch_select=None, clip=False, catch_names=None, geom=None):
+        super().__init__(rm, period=period)
         self.geom = geom
         if geom is None:
             self.geom = SubcatViewerPrep(self.cid, self.rm.gis_info, self.rm.catchment_id_map,
@@ -139,16 +167,19 @@ class SubcatDataExtractor(ArealDataExtractor):
         self._val_ext_methods.update({k: getattr(self.rm.statistics, v+'_value') for k, v in self.basic_outputs.items()})
 
         self._val_ext_methods.update({k: getattr(getattr(self.rm, output_grp), v+'_value') for output_grp in self.outputs[self.stack_nm]
-                                         for k, v in self.outputs[self.stack_nm][output_grp].items()})
+                                         for k, v in self.outputs[self.stack_nm][output_grp].items() if hasattr(self.rm, output_grp)})
 
     def get_map(self, var_name, cat_id_lst_grp, t):
-        return np.array([self._val_ext_methods[var_name](cat_id_lst, t) for cat_id_lst in cat_id_lst_grp])
+        return np.array([self._val_ext_methods[var_name](cat_id_lst, self._time_num_2_idx(t)) for cat_id_lst in cat_id_lst_grp])
 
     def get_ts(self, var_name, cat_id_lst):
-        if (self.stack_nm in ['ptssk', 'pthsk'] and var_name in ['swe']):
-            return self._ts_map_ext_methods[var_name](cat_id_lst).v.to_numpy()[0:-1]
-        else:
-            return self._ts_map_ext_methods[var_name](cat_id_lst).v.to_numpy()
+        # if (self.stack_nm in ['ptssk', 'pthsk'] and var_name in ['swe']):
+        #     return self._ts_map_ext_methods[var_name](cat_id_lst).v.to_numpy()[0:-1]
+        # else:
+        #     return self._ts_map_ext_methods[var_name](cat_id_lst).v.to_numpy()
+        ts = self._ts_map_ext_methods[var_name](cat_id_lst)
+        #return ts.time_axis.time_points[0:ts.size()], ts.v.to_numpy()
+        return ts.time_axis.time_points[self.start_idx:self.start_idx+self.nb_pts], ts.v.to_numpy()[self.start_idx:self.start_idx+self.nb_pts]
 
     def get_geo_data(self, var_name, cat_id_lst_grp):
         idx = [np.in1d(self.cid,cat_id_lst) for cat_id_lst in cat_id_lst_grp]

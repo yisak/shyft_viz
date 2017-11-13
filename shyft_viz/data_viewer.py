@@ -1038,8 +1038,8 @@ class StaticViewer(object):
         import os
         hydras_filename = os.path.join("c:\\", "projects", "yaupi", "hydras.csv")
         weatherlink_filename = os.path.join("c:\\", "projects", "yaupi", "weatherlink.csv")
-        self.add_csv_points(hydras_filename, color='r')
-        self.add_csv_points(weatherlink_filename, color='b')
+        self.add_csv_points(hydras_filename, color='r', marker='o')
+        self.add_csv_points(weatherlink_filename, color='b', marker='+')
 
         self.fig.canvas.draw()
 
@@ -1048,4 +1048,4 @@ class StaticViewer(object):
         with open(filename, 'rt') as csvfile:
             csvreader = csv.reader(csvfile, delimiter=',')
             for r in csvreader:
-                self.main_plot.plot(float(r[1]), float(r[2]), label=r[0], marker='o', **kwargs)
+                self.main_plot.plot(float(r[1]), float(r[2]), label=r[0], **kwargs)

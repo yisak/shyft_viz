@@ -4,10 +4,12 @@ from matplotlib import gridspec
 from matplotlib import dates as mdate
 from matplotlib.widgets import Slider, RadioButtons, CheckButtons, Button, Cursor
 from matplotlib.collections import PatchCollection
+from matplotlib.patches import Polygon as mpPolygon
 import matplotlib.dates as mdates
 from matplotlib.lines import Line2D
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from shapely.geometry import Point
+from shapely.geometry import Point, Polygon, MultiPolygon
+
 from datetime import datetime
 from pytz import utc
 from itertools import cycle
@@ -973,3 +975,80 @@ class ScatterPlot(object):
         SStot = np.square(obs - obs.mean()).sum()
         return 1 - SSres / SStot
 
+
+class StaticViewer(object):
+    """ A class to view static variables for a Region """
+    def __init__(self, polygons, polygon_data, foreground_patches=None):
+
+        self.polygons = polygons
+        self.polygon_data = polygon_data
+        self.foreground_patches = foreground_patches
+
+        self.left = None
+        self.main_plot = None
+        self.colorbar = None
+
+        self.fig = plt.figure(figsize=(12, 6))
+        gs = gridspec.GridSpec(1, 2, width_ratios=[1, 5])
+
+        self.left = plt.subplot(gs[0], aspect='equal')
+        self.main_plot = plt.subplot(gs[1])
+        self.main_plot.axis('equal')
+
+        self.left.set_title("Data")
+        self.left.set_facecolor('lightgoldenrodyellow')
+        self.data_select_button = RadioButtons(self.left, [key for key in polygon_data.keys()])
+        self.data_select_button.on_clicked(self.selected_dataset_changed)
+
+        self.selected_dataset_changed('elevation')
+
+        # Perform autoscale once
+        self.main_plot.autoscale(True)
+        self.main_plot.autoscale(False)
+
+        plt.show()
+
+    def selected_dataset_changed(self, label):
+
+        # Save current view
+        xlim = self.main_plot.axes.get_xlim()
+        ylim = self.main_plot.axes.get_ylim()
+
+        # Clear old plot and add new
+        self.main_plot.cla()
+        pc = PatchCollection(self.polygons)
+        pc.set_array(np.array(self.polygon_data[label]))
+        self.main_plot.add_collection(pc)
+
+        # Restore view
+        self.main_plot.axes.set_xlim(xlim)
+        self.main_plot.axes.set_ylim(ylim)
+
+        # (Re)create colorbar
+        if self.colorbar:
+            self.colorbar.remove()
+        self.colorbar = self.fig.colorbar(pc, ax=self.main_plot)
+
+        # Add foreground patches
+        if self.foreground_patches is not None:
+            [self.main_plot.add_collection(PatchCollection(p['patches'], **p['props']))
+             for p in self.foreground_patches]
+
+        # Temporarily add points from csv until they are added to GIS
+        self.add_csv_points()
+
+        self.fig.canvas.draw()
+
+    def add_csv_points(self):
+        def load_points(filename, **kwargs):
+            import csv
+            with open(filename, 'rt') as csvfile:
+                csvreader = csv.reader(csvfile, delimiter=',')
+                for r in csvreader:
+                    self.main_plot.plot(float(r[1]), float(r[2]), label=r[0], marker='o', **kwargs)
+
+        import os
+        hydras_filename = os.path.join("c:\\", "projects", "yaupi", "hydras.csv")
+        weatherlink_filename = os.path.join("c:\\", "projects", "yaupi", "weatherlink.csv")
+        load_points(hydras_filename, color='r')
+        #load_points(weatherlink_filename, color='b')

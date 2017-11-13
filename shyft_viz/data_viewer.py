@@ -1035,20 +1035,17 @@ class StaticViewer(object):
              for p in self.foreground_patches]
 
         # Temporarily add points from csv until they are added to GIS
-        self.add_csv_points()
-
-        self.fig.canvas.draw()
-
-    def add_csv_points(self):
-        def load_points(filename, **kwargs):
-            import csv
-            with open(filename, 'rt') as csvfile:
-                csvreader = csv.reader(csvfile, delimiter=',')
-                for r in csvreader:
-                    self.main_plot.plot(float(r[1]), float(r[2]), label=r[0], marker='o', **kwargs)
-
         import os
         hydras_filename = os.path.join("c:\\", "projects", "yaupi", "hydras.csv")
         weatherlink_filename = os.path.join("c:\\", "projects", "yaupi", "weatherlink.csv")
-        load_points(hydras_filename, color='r')
-        #load_points(weatherlink_filename, color='b')
+        self.add_csv_points(hydras_filename, color='r')
+        self.add_csv_points(weatherlink_filename, color='b')
+
+        self.fig.canvas.draw()
+
+    def add_csv_points(self, filename, **kwargs):
+        import csv
+        with open(filename, 'rt') as csvfile:
+            csvreader = csv.reader(csvfile, delimiter=',')
+            for r in csvreader:
+                self.main_plot.plot(float(r[1]), float(r[2]), label=r[0], marker='o', **kwargs)

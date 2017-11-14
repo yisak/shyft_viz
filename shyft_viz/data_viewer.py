@@ -978,10 +978,11 @@ class ScatterPlot(object):
 
 class StaticViewer(object):
     """ A class to view static variables for a Region """
-    def __init__(self, polygons, polygon_data, foreground_patches=None):
+    def __init__(self, polygons, polygon_data, foreground_patches=None, points=None):
 
         self.polygons = polygons
         self.polygon_data = polygon_data
+        self.points = points
         self.foreground_patches = foreground_patches
 
         self.left = None
@@ -991,25 +992,40 @@ class StaticViewer(object):
         self.fig = plt.figure(figsize=(12, 6))
         gs = gridspec.GridSpec(1, 2, width_ratios=[1, 5])
 
-        self.left = plt.subplot(gs[0], aspect='equal')
         self.main_plot = plt.subplot(gs[1])
         self.main_plot.axis('equal')
 
-        self.left.set_title("Data")
-        self.left.set_facecolor('lightgoldenrodyellow')
-        self.data_select_button = RadioButtons(self.left, [key for key in polygon_data.keys()])
+        # Selector for polygon data
+        h = 0.5
+        cell_data_box = plt.axes([0.05, 1-h, 0.15, h], aspect='equal')
+        cell_data_box.set_title("Cell data")
+        cell_data_box.set_facecolor('lightgoldenrodyellow')
+        self.data_select_button = RadioButtons(cell_data_box, [key for key in polygon_data.keys()])
         self.data_select_button.on_clicked(self.selected_dataset_changed)
 
-        self.selected_dataset_changed('elevation')
+        if len(points) > 0:
+            # Selector for points
+            point_data_box = plt.axes([0.05,1-h-h, 0.15, h], aspect='equal')
+            point_data_box.set_title("Points")
+            point_data_box.set_facecolor('lightgoldenrodyellow')
+            point_labels = [key for key in points.keys()]
+            self.point_select_status = {key: False for key in points.keys()}
+            self.point_select_button = CheckButtons(point_data_box, point_labels, (False,)*len(point_labels))
+            self.point_select_button.on_clicked(self.selected_points_changed)
+
+        # Add elevation dataset (assume this is always present for now)
+        self.selected_dataset = None
+        self.selected_dataset_changed('Elevation')
 
         # Perform autoscale once
         self.main_plot.autoscale(True)
         self.main_plot.autoscale(False)
 
+        self.fig.canvas.draw()
+
         plt.show()
 
-    def selected_dataset_changed(self, label):
-
+    def update_plot(self):
         # Save current view
         xlim = self.main_plot.axes.get_xlim()
         ylim = self.main_plot.axes.get_ylim()
@@ -1017,7 +1033,7 @@ class StaticViewer(object):
         # Clear old plot and add new
         self.main_plot.cla()
         pc = PatchCollection(self.polygons)
-        pc.set_array(np.array(self.polygon_data[label]))
+        pc.set_array(np.array(self.polygon_data[self.selected_dataset]))
         self.main_plot.add_collection(pc)
 
         # Restore view
@@ -1034,18 +1050,23 @@ class StaticViewer(object):
             [self.main_plot.add_collection(PatchCollection(p['patches'], **p['props']))
              for p in self.foreground_patches]
 
-        # Temporarily add points from csv until they are added to GIS
-        import os
-        hydras_filename = os.path.join("c:\\", "projects", "yaupi", "hydras.csv")
-        weatherlink_filename = os.path.join("c:\\", "projects", "yaupi", "weatherlink.csv")
-        self.add_csv_points(hydras_filename, color='r', marker='o')
-        self.add_csv_points(weatherlink_filename, color='b', marker='+')
+        # Add points
+        for key in self.points:
+            if self.point_select_status[key]:
+                vals = self.points[key][0]
+                opts = self.points[key][1]
+                self.add_points(vals, **opts)
 
         self.fig.canvas.draw()
 
-    def add_csv_points(self, filename, **kwargs):
-        import csv
-        with open(filename, 'rt') as csvfile:
-            csvreader = csv.reader(csvfile, delimiter=',')
-            for r in csvreader:
-                self.main_plot.plot(float(r[1]), float(r[2]), label=r[0], **kwargs)
+    def selected_dataset_changed(self, label):
+        self.selected_dataset = label
+        self.update_plot()
+
+    def selected_points_changed(self, label):
+        self.point_select_status[label] = not self.point_select_status[label]
+        self.update_plot()
+
+    def add_points(self, points, **kwargs):
+        for idx in range(len(points)):
+            self.main_plot.plot(points[idx][0], points[idx][1], **kwargs)

@@ -8,7 +8,6 @@ import matplotlib.dates as mdates
 from matplotlib.lines import Line2D
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from shapely.geometry import Point
-
 from datetime import datetime
 from pytz import utc
 from itertools import cycle

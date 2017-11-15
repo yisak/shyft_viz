@@ -4,11 +4,10 @@ from matplotlib import gridspec
 from matplotlib import dates as mdate
 from matplotlib.widgets import Slider, RadioButtons, CheckButtons, Button, Cursor
 from matplotlib.collections import PatchCollection
-from matplotlib.patches import Polygon as mpPolygon
 import matplotlib.dates as mdates
 from matplotlib.lines import Line2D
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from shapely.geometry import Point, Polygon, MultiPolygon
+from shapely.geometry import Point
 
 from datetime import datetime
 from pytz import utc

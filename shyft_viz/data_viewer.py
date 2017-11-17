@@ -1070,4 +1070,5 @@ class StaticViewer(object):
             x = points[idx][0]
             y = points[idx][1]
             self.main_plot.plot(x, y, **kwargs)
-            self.main_plot.annotate(points[idx][2], xy=(x,y), textcoords='data')
+            if len(points[idx]) > 2:
+                self.main_plot.annotate(points[idx][2], xy=(x,y), textcoords='data')

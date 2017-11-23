@@ -52,9 +52,9 @@ class ArealDataExtractor(object):
                         }
         u = ['degree_celsius', 'mm', 'm3_per_sec', 'mm_per_hr', 'W_per_m2', 'm_per_sec', 'fraction [0-1]', 'm']
         self.var_units = {'prec': u[3], 'temp': u[0], 'swe': u[1], 'q_avg': u[2], 'rad': u[4], 'ws': u[5], 'rh': u[6],
-                          'z': u[7]}
+                          'z': u[7], 'sout': u[2]}
         self.geo_attr = ['z', 'gf', 'lf', 'rf', 'ff']
-        self.temporal_vars = ['prec', 'temp', 'swe', 'q_avg', 'rad', 'ws', 'rh']  # TODO: make this a property
+        self.temporal_vars = ['prec', 'temp', 'swe', 'q_avg', 'rad', 'ws', 'rh', 'sout']  # TODO: make this a property
         self.static_vars = ['z']  # TODO: make this a property
         geo_attr_all = ['x', 'y', 'z', 'area', 'c_id', 'rsf', 'gf', 'lf', 'rf', 'ff', 'uf']
         self.cell_geo_data = np.rec.fromrecords(self.cells.geo_cell_data_vector(self.cells).to_numpy().reshape(
@@ -139,7 +139,7 @@ class CellDataExtractor(ArealDataExtractor):
         #     return self._ts_ext_methods[var_name](self.cells[int(cell_idx)]).v.to_numpy()
         ts = self._ts_ext_methods[var_name](self.cells[int(cell_idx)])
         #return ts.time_axis.time_points[0:ts.size()], ts.v.to_numpy()
-        return ts.time_axis.time_points[self.start_idx:self.start_idx+self.nb_pts], ts.v.to_numpy()[self.start_idx:self.start_idx+self.nb_pts]
+        return ts.TimeSeries.time_axis.time_points[self.start_idx:self.start_idx+self.nb_pts], ts.v.to_numpy()[self.start_idx:self.start_idx+self.nb_pts]
 
     def get_geo_data(self, var_name, cat_id_lst):
         return self.cell_geo_data[var_name][np.in1d(self.cid,cat_id_lst)]

@@ -155,7 +155,7 @@ class Viewer(object):
         plt_mode_label = ['Plot_dist_dataset', 'Add_dist_ds_to_rec', 'Del_dist_ds_from_rec', 'Custom_Plot']
         self.custom_plt = custom_plt
         self.custom_plt_types = list(self.custom_plt.keys())
-        self.custom_plt_active = self.custom_plt_types[0]
+        self.custom_plt_active = self.custom_plt_types[0] if len(custom_plt) else None
 
         self.data_lim_current = {nm: [0, 1] for nm in self.dist_vars}
 
@@ -209,7 +209,8 @@ class Viewer(object):
 
         self.custom_plt_btn = self.add_radio_button(ax_oper_plots, 'Custom Plots', self.custom_plt_types,
                                                     self.OnCustomPltBtnClk)
-        self.custom_plt_btn.set_active(self.custom_plt_types.index(self.custom_plt_active))
+        if self.custom_plt_active:
+            self.custom_plt_btn.set_active(self.custom_plt_types.index(self.custom_plt_active))
         self.add_data_lim_sliders(ax_min_slider, ax_max_slider)
         self.add_time_slider(ax_time_slider)
         self.add_media_button(ax_navigate)
@@ -973,3 +974,102 @@ class ScatterPlot(object):
         SStot = np.square(obs - obs.mean()).sum()
         return 1 - SSres / SStot
 
+
+class StaticViewer(object):
+    """ A class to view static variables for a Region """
+    def __init__(self, polygons, polygon_data, foreground_patches=None, points=None):
+
+        self.polygons = polygons
+        self.polygon_data = polygon_data
+        self.points = points
+        self.foreground_patches = foreground_patches
+
+        self.left = None
+        self.main_plot = None
+        self.colorbar = None
+
+        self.fig = plt.figure(figsize=(12, 6))
+        gs = gridspec.GridSpec(1, 2, width_ratios=[1, 5])
+
+        self.main_plot = plt.subplot(gs[1])
+        self.main_plot.axis('equal')
+
+        # Selector for polygon data
+        h = 0.5
+        cell_data_box = plt.axes([0.05, 1-h, 0.15, h], aspect='equal')
+        cell_data_box.set_title("Cell data")
+        cell_data_box.set_facecolor('lightgoldenrodyellow')
+        self.data_select_button = RadioButtons(cell_data_box, [key for key in polygon_data.keys()])
+        self.data_select_button.on_clicked(self.selected_dataset_changed)
+
+        if len(points) > 0:
+            # Selector for points
+            point_data_box = plt.axes([0.05,1-h-h, 0.15, h], aspect='equal')
+            point_data_box.set_title("Points")
+            point_data_box.set_facecolor('lightgoldenrodyellow')
+            point_labels = [key for key in points.keys()]
+            self.point_select_status = {key: False for key in points.keys()}
+            self.point_select_button = CheckButtons(point_data_box, point_labels, (False,)*len(point_labels))
+            self.point_select_button.on_clicked(self.selected_points_changed)
+
+        # Add elevation dataset (assume this is always present for now)
+        self.selected_dataset = None
+        self.selected_dataset_changed('Elevation')
+
+        # Perform autoscale once
+        self.main_plot.autoscale(True)
+        self.main_plot.autoscale(False)
+
+        self.fig.canvas.draw()
+
+        plt.show()
+
+    def update_plot(self):
+        # Save current view
+        xlim = self.main_plot.axes.get_xlim()
+        ylim = self.main_plot.axes.get_ylim()
+
+        # Clear old plot and add new
+        self.main_plot.cla()
+        pc = PatchCollection(self.polygons)
+        pc.set_array(np.array(self.polygon_data[self.selected_dataset]))
+        self.main_plot.add_collection(pc)
+
+        # Restore view
+        self.main_plot.axes.set_xlim(xlim)
+        self.main_plot.axes.set_ylim(ylim)
+
+        # (Re)create colorbar
+        if self.colorbar:
+            self.colorbar.remove()
+        self.colorbar = self.fig.colorbar(pc, ax=self.main_plot)
+
+        # Add foreground patches
+        if self.foreground_patches is not None:
+            [self.main_plot.add_collection(PatchCollection(p['patches'], **p['props']))
+             for p in self.foreground_patches]
+
+        # Add points
+        for key in self.points:
+            if self.point_select_status[key]:
+                vals = self.points[key][0]
+                opts = self.points[key][1]
+                self.add_points(vals, **opts)
+
+        self.fig.canvas.draw()
+
+    def selected_dataset_changed(self, label):
+        self.selected_dataset = label
+        self.update_plot()
+
+    def selected_points_changed(self, label):
+        self.point_select_status[label] = not self.point_select_status[label]
+        self.update_plot()
+
+    def add_points(self, points, **kwargs):
+        for idx in range(len(points)):
+            x = points[idx][0]
+            y = points[idx][1]
+            self.main_plot.plot(x, y, **kwargs)
+            if len(points[idx]) > 2:
+                self.main_plot.annotate(points[idx][2], xy=(x,y), textcoords='data')

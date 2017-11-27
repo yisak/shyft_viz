@@ -153,7 +153,6 @@ class Viewer(object):
 
 
         plt_mode_label = ['Plot_dist_dataset', 'Add_dist_ds_to_rec', 'Del_dist_ds_from_rec', 'Custom_Plot']
-
         self.custom_plt = custom_plt
         self.custom_plt_types = list(self.custom_plt.keys())
         self.custom_plt_active = self.custom_plt_types[0] if len(custom_plt) else None

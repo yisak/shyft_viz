@@ -155,7 +155,7 @@ class Viewer(object):
         plt_mode_label = ['Plot_dist_dataset', 'Add_dist_ds_to_rec', 'Del_dist_ds_from_rec', 'Custom_Plot']
         self.custom_plt = custom_plt
         self.custom_plt_types = list(self.custom_plt.keys())
-        self.custom_plt_active = self.custom_plt_types[0]
+        self.custom_plt_active = self.custom_plt_types[0] if len(custom_plt) else None
 
         self.data_lim_current = {nm: [0, 1] for nm in self.dist_vars}
 
@@ -209,7 +209,8 @@ class Viewer(object):
 
         self.custom_plt_btn = self.add_radio_button(ax_oper_plots, 'Custom Plots', self.custom_plt_types,
                                                     self.OnCustomPltBtnClk)
-        self.custom_plt_btn.set_active(self.custom_plt_types.index(self.custom_plt_active))
+        if self.custom_plt_active:
+            self.custom_plt_btn.set_active(self.custom_plt_types.index(self.custom_plt_active))
         self.add_data_lim_sliders(ax_min_slider, ax_max_slider)
         self.add_time_slider(ax_time_slider)
         self.add_media_button(ax_navigate)

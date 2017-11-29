@@ -31,7 +31,12 @@ class DataExtractor(object):
         return self.cal.to_string(self.t_ax_shyft.time(self._time_num_2_idx(t_num)))
 
     def _time_num_2_idx(self, t_num):
-        return self.t_ax_shyft.index_of(int(t_num))
+        t = int(t_num)
+        if t < self.t_ax_shyft.start:
+            return 0
+        elif t > self.t_ax_shyft.end:
+            return self.t_ax_shyft.n-1
+        return self.t_ax_shyft.index_of(t)
 
     def get_map(self, var_name, cat_id_lst, t_num):
         t = self._time_num_2_idx(t_num)

@@ -34,7 +34,7 @@ class DataExtractor(object):
         t = int(t_num)
         if t < self.t_ax_shyft.start:
             return 0
-        elif t > self.t_ax_shyft.end:
+        elif t >= self.t_ax_shyft.total_period().end:
             return self.t_ax_shyft.n-1
         return self.t_ax_shyft.index_of(t)
 

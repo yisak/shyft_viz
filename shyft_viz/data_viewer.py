@@ -308,7 +308,8 @@ class Viewer(object):
             pt_ds_auto_sel = self.ds_names_pt[[label in self.pt_vars_pr_ds[nm] for nm in self.ds_names_pt].index(True)]
             print('Pt.Var.Sel.: pt_ds_auto_sel',pt_ds_auto_sel)
             print("Pt.Var.Sel.: Auto-selected Pt. Dataset '{}'".format(pt_ds_auto_sel))
-            self.pt_dataset_sel_btn.set_active(self.ds_names_pt.index(pt_ds_auto_sel))
+            if self.pt_dataset_sel_btn:
+                self.pt_dataset_sel_btn.set_active(self.ds_names_pt.index(pt_ds_auto_sel))
         self.pt_var = label
 
 

@@ -194,7 +194,6 @@ class Viewer(object):
 
         if background_img is not None:
             plot_background(self.ax_plt, background_img)
-
         self.add_plot()
         self.set_labels()
 
@@ -246,6 +245,7 @@ class Viewer(object):
         for ds in self.ds_names:
             self.map[ds] = self.ax_plt.add_collection(PatchCollection(self.patches[ds], alpha=0.9))
             self.data = self.data_ext[ds].get_map(self.dist_var, self.map_fetching_lst[ds], self.t_ax[self.ti])
+            print(ds)
             self.map[ds].set_array(self.data)
             self.cbar[ds] = self.fig.colorbar(self.map[ds], cax=cax, orientation='vertical')
             self.map[ds].set_visible(False)
@@ -269,9 +269,14 @@ class Viewer(object):
             dist_var_auto_sel = self.dist_vars_pr_ds[label][0]
             self.dist_var_sel_btn.set_active(self.dist_vars.index(dist_var_auto_sel))
             print("Dist.Ds.Sel.: Auto-selected Variable '{}'".format(dist_var_auto_sel))
-        self.map[self.ds_active].set_visible(False)
-        self.map[label].set_visible(True)
-        self.ds_active = label
+            self.map[self.ds_active].set_visible(False)
+            self.map[label].set_visible(True)
+            self.ds_active = label
+        else:
+            self.map[self.ds_active].set_visible(False)
+            self.map[label].set_visible(True)
+            self.ds_active = label
+            self.dist_var_sel_btn.set_active(self.dist_vars.index(self.dist_var_sel_btn.value_selected))
         self.fig.canvas.draw()
 
     def OnDistVarBtnClk(self, label):

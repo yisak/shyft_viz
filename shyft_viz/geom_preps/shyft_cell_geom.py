@@ -65,7 +65,7 @@ class SubcatViewerPrep(ViewerPrep):
         super().__init__(cell_cid_full, cell_shapes_full, catchment_id_map, bbox)
 
         if catch_grp is None:
-            self.catch_ids_select = self.catchment_id_map
+            self.catch_ids_select = np.array(self.catchment_id_map).tolist()
             self.catch_grp_select = [[cid] for cid in self.catchment_id_map]
         else:
             self.catch_ids_select = [item for sublist in catch_grp for item in sublist]

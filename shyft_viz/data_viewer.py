@@ -78,7 +78,7 @@ class AnnoteFinder(object):
 
 class Viewer(object):
     def __init__(self, data_ext, temporal_vars, static_vars, custom_plt, time_marker=None, background_img=None, foreground_patches=None,
-                 data_ext_pt=None, default_var=None, default_ds=None, default_pt_var=None, default_pt_ds=None):
+                 data_ext_pt=None, default_var=None, default_ds=None, default_pt_var=None, default_pt_ds=None, data_limits=None):
         # Set-up Dist dataset
         #self.data_ext = {k: v for k, v in data_ext.items()}
         self.data_ext = {k: v for k, v in data_ext.items() if any(i in temporal_vars for i in v.temporal_vars) or any(j in static_vars for j in v.static_vars)}
@@ -93,6 +93,7 @@ class Viewer(object):
         self.dist_vars_pr_ds = {k: [var for var in v.temporal_vars if var in temporal_vars] for k, v in
                              self.data_ext.items()}
         self.geo_data = list(set([var for v in self.data_ext.values() for var in v.static_vars if var in static_vars]))
+        self.dist_vars.extend(self.geo_data)
         # -Just picking the value for one of the datasets for now-
         bbox = {k: v.geom.bbox for k, v in self.data_ext.items()}
         self.bbox = list(bbox.values())[0]
@@ -112,9 +113,11 @@ class Viewer(object):
         self.map = {k: None for k in self.data_ext}
         self.cbar = {k: None for k in self.data_ext}
 
-        self.data_lim = {'temp': [-20., 40.], 'swe': [0., 500], 'q_avg': [0., 500], 'rad': [0., 1000.],
-                         'prec': [0., 50.],
-                         'z': [0., 3000.]}
+        self.data_lim = data_limits
+        if data_limits is None:
+            self.data_lim = {'temp': [-20., 40.], 'swe': [0., 500], 'q_avg': [0., 500], 'rad': [0., 1000.],
+                             'prec': [0., 50.], 'sout': [0., 500],
+                             'z': [0., 3000.], 'gf': [0., 1.], 'lf':[0., 1.], 'rf':[0., 1.], 'ff':[0., 1.], 'uf':[0., 1.]}
         self.dist_var = default_var
         if default_var is None:
             self.dist_var = self.dist_vars[0]

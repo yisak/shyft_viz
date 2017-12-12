@@ -8,7 +8,7 @@ class GeoTsVectorDataExtractorError(Exception):
     pass
 
 class GeoTsVectorDataExtractor(object):
-    def __init__(self, ts_vct_dict, as_pt_dataset=True, geom=None, model_cs=None, fc_cs=None, dxy=None):
+    def __init__(self, ts_vct_dict, as_pt_dataset=True, geom=None, model_cs=None, fc_cs=None, dxy=None, pt_names=None):
         self.cal = api.Calendar()
         self.std_units = {'temp': 'degree_celsius', 'prec': 'mm_per_hr', 'rad': 'W_per_m2', 'ws': 'm_per_sec',
                           'rh':'fraction [0-1]'}
@@ -34,7 +34,7 @@ class GeoTsVectorDataExtractor(object):
         self.var_units = {nm: self.std_units[nm] for nm in self.ts_vct_dict}
         if as_pt_dataset:
             self.nb_pts = len(self.xyz)
-            self.names = [str(i) for i in range(self.nb_pts)]
+            self.names = [str(i) for i in range(self.nb_pts)] if pt_names is None else pt_names
             self.coord = self.xyz[:, 0:2]
         else:
             ref_ts = list(self.ts_vct_dict.values())[0][0].ts

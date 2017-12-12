@@ -220,6 +220,7 @@ class Viewer(object):
         self.clear_rec_btn = self.add_button(ax_clear_rec_btn, 'Clear Record', self.OnClearRecord)
         self.plot_rec_btn = self.add_button(ax_plot_rec_btn, 'Plot Record', self.OnPlotDataInRecord)
 
+        self.pt_dataset_sel_btn = None
         if data_ext_pt is not None:
             self.pt_var_sel_btn = self.add_radio_button(ax_pt_var_slect, 'Pt_Vars', self.pt_vars, self.OnPtVarBtnClk)
             self.pt_var_sel_btn.set_active(self.pt_vars.index(self.pt_var))
@@ -316,7 +317,8 @@ class Viewer(object):
             pt_ds_auto_sel = self.ds_names_pt[[label in self.pt_vars_pr_ds[nm] for nm in self.ds_names_pt].index(True)]
             print('Pt.Var.Sel.: pt_ds_auto_sel',pt_ds_auto_sel)
             print("Pt.Var.Sel.: Auto-selected Pt. Dataset '{}'".format(pt_ds_auto_sel))
-            self.pt_dataset_sel_btn.set_active(self.ds_names_pt.index(pt_ds_auto_sel))
+            if self.pt_dataset_sel_btn:
+                self.pt_dataset_sel_btn.set_active(self.ds_names_pt.index(pt_ds_auto_sel))
         self.pt_var = label
 
 
@@ -591,6 +593,9 @@ class Viewer(object):
 
     def on_pick(self, event):
         tb = self.fig.canvas.manager.toolbar
+        if event.artist.stale:
+            return False
+
         if tb.mode != '':
             print('You clicked on something, but toolbar is in mode pan/zoom.')
             return True

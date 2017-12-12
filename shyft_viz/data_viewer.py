@@ -218,6 +218,7 @@ class Viewer(object):
         self.clear_rec_btn = self.add_button(ax_clear_rec_btn, 'Clear Record', self.OnClearRecord)
         self.plot_rec_btn = self.add_button(ax_plot_rec_btn, 'Plot Record', self.OnPlotDataInRecord)
 
+        self.pt_dataset_sel_btn = None
         if data_ext_pt is not None:
             self.pt_var_sel_btn = self.add_radio_button(ax_pt_var_slect, 'Pt_Vars', self.pt_vars, self.OnPtVarBtnClk)
             self.pt_var_sel_btn.set_active(self.pt_vars.index(self.pt_var))

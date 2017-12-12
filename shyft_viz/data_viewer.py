@@ -593,6 +593,9 @@ class Viewer(object):
 
     def on_pick(self, event):
         tb = self.fig.canvas.manager.toolbar
+        if event.artist.stale:
+            return False
+
         if tb.mode != '':
             print('You clicked on something, but toolbar is in mode pan/zoom.')
             return True

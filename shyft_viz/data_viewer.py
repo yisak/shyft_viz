@@ -673,7 +673,7 @@ class TsPlot(object):
         self.i = 1
         self.plt_mode = {'Plot_over': False, 'Re-plot': False}
         self.gs = gridspec.GridSpec(1, 2, width_ratios=[0.1, 0.9])  # , height_ratios=[2,1])
-        self.gs_plot_opt = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=self.gs[0, 0])
+        self.gs_plot_opt = gridspec.GridSpecFromSubplotSpec(4, 1, subplot_spec=self.gs[0, 0])
         self.data = {}
 
     def add_click_button(self, ax_button, label, func):
@@ -707,13 +707,36 @@ class TsPlot(object):
         ax_options_1 = self.fig.add_subplot(self.gs_plot_opt[0, 0]) # self.gs[0, 0])
         self.option_btn = self.add_check_button(ax_options_1, 'Options', list(self.plt_mode.keys()),
                                                 list(self.plt_mode.values()), self.OnPltModeBtnClk)
-        ax_options_2 = self.fig.add_subplot(self.gs_plot_opt[1, 0])
-        self.comp_btn = self.add_click_button(ax_options_2, 'Compare', self.OnCompare)
+        ax_comp_btn = self.fig.add_subplot(self.gs_plot_opt[1, 0])
+        self.comp_btn = self.add_click_button(ax_comp_btn, 'Compare', self.OnCompare)
+        ax_acc_btn = self.fig.add_subplot(self.gs_plot_opt[2, 0])
+        self.acc_btn = self.add_click_button(ax_acc_btn, 'Accumulate', self.OnAccumulate)
+        ax_deacc_btn = self.fig.add_subplot(self.gs_plot_opt[3, 0])
+        self.deacc_btn = self.add_click_button(ax_deacc_btn, 'Deaccumulate', self.OnDeaccumulate)
         self.fig.canvas.mpl_connect('close_event', self.handle_close)
         self.fig.autofmt_xdate()  # for one subplot
         self.ax.xaxis_date()
         self.add_plot(data_dict)
         self.cursor = Cursor(self.ax, useblit=True, color='red', linewidth=2)
+
+    def OnAccumulate(self, event):
+        # [self.data[k].update({'v': self.data[k]['v'].cumsum()}) for k in self.data] # not changing this in order to keep the original raw data
+        lines = self.ax.get_lines()
+        acc = [line.get_ydata().cumsum() for line in lines]
+        [line.set_ydata(y) for y,line in zip(acc,lines)]
+        self.ax.set_ylim(None, max([y.max() for y in acc]))
+
+    def OnDeaccumulate(self, event):
+        # [self.data[k].update({'v': np.put(self.data[k]['v'], np.arange(1,len(self.data[k]['v'])),
+        #                                   self.data[k]['v'][1:]-self.data[k]['v'][0:-1])}) for k in self.data] # not changing this in order to keep the original raw data
+        lines = self.ax.get_lines()
+        deacc_lst = []
+        for line in lines:
+            deacc = line.get_ydata()
+            deacc[1:] = deacc[1:]-deacc[0:-1]
+            line.set_ydata(deacc)
+            deacc_lst.append(deacc)
+        self.ax.set_ylim(None, max([y.max() for y in deacc_lst]))
 
     def OnCompare(self, event):
         fetch_data_from_plot = False

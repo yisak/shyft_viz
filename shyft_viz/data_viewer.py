@@ -722,6 +722,7 @@ class TsPlot(object):
     def OnAccumulate(self, event):
         # [self.data[k].update({'v': self.data[k]['v'].cumsum()}) for k in self.data] # not changing this in order to keep the original raw data
         lines = self.ax.get_lines()
+        lines = [line for line in lines if '#' in line.get_label()]
         acc = [line.get_ydata().cumsum() for line in lines]
         [line.set_ydata(y) for y,line in zip(acc,lines)]
         self.ax.set_ylim(None, max([y.max() for y in acc]))
@@ -730,6 +731,7 @@ class TsPlot(object):
         # [self.data[k].update({'v': np.put(self.data[k]['v'], np.arange(1,len(self.data[k]['v'])),
         #                                   self.data[k]['v'][1:]-self.data[k]['v'][0:-1])}) for k in self.data] # not changing this in order to keep the original raw data
         lines = self.ax.get_lines()
+        lines = [line for line in lines if '#' in line.get_label()]
         deacc_lst = []
         for line in lines:
             deacc = line.get_ydata()

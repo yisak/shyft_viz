@@ -249,7 +249,6 @@ class Viewer(object):
         for ds in self.ds_names:
             self.map[ds] = self.ax_plt.add_collection(PatchCollection(self.patches[ds], alpha=0.9))
             self.data = self.data_ext[ds].get_map(self.dist_var, self.map_fetching_lst[ds], self.t_ax[self.ti])
-            print(ds)
             self.map[ds].set_array(self.data)
             self.cbar[ds] = self.fig.colorbar(self.map[ds], cax=cax, orientation='vertical')
             self.map[ds].set_visible(False)

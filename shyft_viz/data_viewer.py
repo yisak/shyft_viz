@@ -766,7 +766,7 @@ class TsPlot(object):
                 print(err_msg)
                 return True
             labels = list(self.data.keys())
-            is_obs = ['Obs' in label for label in labels]
+            is_obs = ['obs' in label.lower() for label in labels]
             if any(is_obs):
                 obs_idx = is_obs.index(True)
                 sim_idx = is_obs.index(False)

@@ -69,7 +69,7 @@ class SubcatViewerPrep(ViewerPrep):
             self.catch_grp_select = [[cid] for cid in self.catchment_id_map]
         else:
             self.catch_ids_select = [item for sublist in catch_grp for item in sublist]
-            self.catch_grp_select = [list(seq) for seq in catch_grp]
+            self.catch_grp_select = [seq if isinstance(seq, list) else seq.tolist() for seq in catch_grp]
 
         self.ts_fetching_lst = self.map_fetching_lst = self.catch_grp_select
 

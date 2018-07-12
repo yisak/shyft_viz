@@ -14,7 +14,7 @@ from itertools import cycle
 plt.style.use('ggplot')
 
 def utctimestamp_2_datetime(utc_lst):
-    return [datetime.utcfromtimestamp(t_num).replace(tzinfo=utc) for t_num in utc_lst]
+    return [datetime.utcfromtimestamp(int(t_num)).replace(tzinfo=utc) for t_num in utc_lst]
 
 
 def plot_background(ax, f_path):
@@ -369,7 +369,7 @@ class Viewer(object):
         return self.data_lim[self.dist_var][0] + val * (self.data_lim[self.dist_var][1] - self.data_lim[self.dist_var][0])
 
     def add_time_slider(self, ax_slider):
-        self.time_slider = Slider(ax_slider, 'Time', self.t_ax[0], self.t_ax[-1], valinit=self.t_ax[0])
+        self.time_slider = Slider(ax_slider, 'Time', int(self.t_ax[0]), int(self.t_ax[-1]), valinit=int(self.t_ax[0]))
         self.time_slider.valtext.set_text(datetime.utcfromtimestamp(int(self.time_slider.val)).strftime('%Y-%m-%d %H:%M:%S'))
         self.time_slider.on_changed(self.update_time)
 

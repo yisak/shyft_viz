@@ -116,7 +116,8 @@ class CellDataExtractor(ArealDataExtractor):
         self.ts_fetching_lst = self.geom.ts_fetching_lst
         self.map_fetching_lst = self.geom.map_fetching_lst
         if catch_names is None:
-            self.catch_names = ['c_'+str(i) for i in range(len(self.cid))]
+            #self.catch_names = ['c_'+str(i) for i in range(len(self.cid))]
+            self.catch_names = ['c_' + str(i) for i in self.ts_fetching_lst]  # to get cell indices matching order in region_modell cells
         else:
             self.catch_names = catch_names
 

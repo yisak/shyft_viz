@@ -6,7 +6,7 @@ from shyft import api
 class TsVectorDataExtractor(object):
     def __init__(self, ts_vct_dict, catch_names, geom, preprocess=False):
         var_nm_map = {'precipitation': 'prec', 'temperature': 'temp', 'wind_speed': 'ws', 'relative_humidity': 'rh',
-                      'radiation': 'rad', 'q_avg': 'q_avg'}
+                      'radiation': 'rad', 'discharge': 'q_avg'}
         ts_vct_dict = {var_nm_map[k]: v for k, v in ts_vct_dict.items()}
         #ts_vct can be a list of Ts or TsVector
         for nm, ts_vct in ts_vct_dict.items():
@@ -55,8 +55,17 @@ class TsVectorDataExtractor(object):
         # Extracting by loop
         return [ts.time(i) for i in range(ts.size())]
 
+    def _time_num_2_idx(self, t_num):
+        if t_num < self.t_ax_shyft.time(0):
+            return 0
+        elif t_num > self.t_ax_shyft.time(self.t_ax_shyft_full.size()-1):
+            return self.t_ax_shyft.size()-1
+        else:
+            return self.t_ax_shyft.index_of(int(t_num))
+
     def get_closest_time(self, t_num):
-        return self.t_ax_shyft.time(self.t_ax_shyft.index_of(int(t_num), 0))
+        # return self.t_ax_shyft.time(self.t_ax_shyft.index_of(int(t_num), 0))
+        return self.t_ax_shyft.time(self._time_num_2_idx(int(t_num)))
 
     def time_num_2_str(self, t_num):
         return self.cal.to_string(self.get_closest_time(t_num))

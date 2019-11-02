@@ -6,7 +6,7 @@ from shyft import api
 class TsVectorDataExtractor(object):
     def __init__(self, ts_vct_dict, catch_names, geom, preprocess=False):
         var_nm_map = {'precipitation': 'prec', 'temperature': 'temp', 'wind_speed': 'ws', 'relative_humidity': 'rh',
-                      'radiation': 'rad', 'discharge': 'q_avg'}
+                      'radiation': 'rad', 'q_avg': 'q_avg'}
         ts_vct_dict = {var_nm_map[k]: v for k, v in ts_vct_dict.items()}
         #ts_vct can be a list of Ts or TsVector
         for nm, ts_vct in ts_vct_dict.items():

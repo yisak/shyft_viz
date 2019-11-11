@@ -58,7 +58,7 @@ class TsVectorDataExtractor(object):
     def _time_num_2_idx(self, t_num):
         if t_num < self.t_ax_shyft.time(0):
             return 0
-        elif t_num > self.t_ax_shyft.time(self.t_ax_shyft_full.size()-1):
+        elif t_num > self.t_ax_shyft.time(self.t_ax_shyft.size()-1):
             return self.t_ax_shyft.size()-1
         else:
             return self.t_ax_shyft.index_of(int(t_num))

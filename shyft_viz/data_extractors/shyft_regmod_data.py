@@ -26,7 +26,7 @@ class ArealDataExtractor(object):
             self.t_ax = self.t_ax_full
         self.inputs = {'prec': 'precipitation', 'temp': 'temperature', 'ws': 'wind_speed', 'rh': 'rel_hum',
                        'rad': 'radiation'}
-        self.basic_outputs = {'q_avg': 'discharge'}
+        self.basic_outputs = {'q_avg': 'discharge', 'charge_avg': 'charge'}
         self.outputs = {'ptgsk':
                             {'priestley_taylor_response': {'pet': 'output'},
                             'actual_evaptranspiration_response': {'aet': 'output'},
@@ -52,9 +52,10 @@ class ArealDataExtractor(object):
                         }
         u = ['degree_celsius', 'mm', 'm3_per_sec', 'mm_per_hr', 'W_per_m2', 'm_per_sec', 'fraction [0-1]', 'm']
         self.var_units = {'prec': u[3], 'temp': u[0], 'swe': u[1], 'q_avg': u[2], 'rad': u[4], 'ws': u[5], 'rh': u[6],
-                          'z': u[7], 'sout': u[2], 'gf': u[6] , 'lf': u[6], 'rf': u[6], 'ff': u[6], 'uf': u[6]}
+                          'z': u[7], 'sout': u[3], 'gf': u[6] , 'lf': u[6], 'rf': u[6], 'ff': u[6], 'uf': u[6],
+                          'q_inst': u[2], 'aet': u[3], 'charge_avg': u[2]}
         # self.geo_attr = ['z', 'gf', 'lf', 'rf', 'ff', 'uf']
-        self.temporal_vars = ['prec', 'temp', 'swe', 'q_avg', 'rad', 'ws', 'rh', 'sout']  # TODO: make this a property
+        self.temporal_vars = ['prec', 'temp', 'swe', 'q_avg', 'rad', 'ws', 'rh', 'sout', 'q_inst', 'aet', 'charge_avg']  # TODO: make this a property
         self.static_vars = ['z', 'gf', 'lf', 'rf', 'ff', 'uf']  # TODO: make this a property
         geo_attr_all = ['x', 'y', 'z', 'area', 'c_id', 'rsf', 'gf', 'lf', 'rf', 'ff', 'uf']
         self.cell_geo_data = np.rec.fromrecords(self.cells.geo_cell_data_vector(self.cells).to_numpy().reshape(
@@ -92,12 +93,15 @@ class CellDataExtractor(ArealDataExtractor):
 
         self.responses = {'ptgsk':
                               {'q_avg': 'avg_discharge', 'pet': 'pe_output', 'aet': 'ae_output', 'sout': 'snow_outflow',
-                                'swe': 'snow_swe', 'sca': 'snow_sca'},
+                                'swe': 'snow_swe', 'sca': 'snow_sca',
+                               'charge_avg': 'avg_charge'},
                           'ptssk':
                               {'q_avg': 'avg_discharge', 'pet': 'pe_output', 'aet': 'ae_output', 'sout': 'snow_outflow',
-                               'glacier_melt':'glacier_melt','snow_total_stored_water':'snow_total_stored_water'},
+                               'glacier_melt':'glacier_melt','snow_total_stored_water':'snow_total_stored_water',
+                               'charge_avg': 'avg_charge'},
                           'pthsk':
-                              {'q_avg': 'avg_discharge', 'pet': 'pe_output', 'aet': 'ae_output', 'sout': 'snow_outflow'}
+                              {'q_avg': 'avg_discharge', 'pet': 'pe_output', 'aet': 'ae_output', 'sout': 'snow_outflow',
+                               'charge_avg': 'avg_charge'}
                           }
         self.states = {'ptgsk':
                            {'q_inst': 'kirchner_discharge', 'acc_melt': 'gs_acc_melt', 'albedo': 'gs_albedo',
